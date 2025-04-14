@@ -1,0 +1,19 @@
+/* src/components/SideNav.css */
+md-list-item.active-item {
+  /* Example active style: medium gray */
+  background-color: gray;
+  /* You could also change text color or add a border */
+  /* font-weight: bold; */
+}
+
+/* Optional: Improve hover/focus states for better feedback */
+md-list-item[type="button"]:hover {
+  background-color: #e8e8e8;
+}
+
+/* Material components might handle focus, but you can customize */
+md-list-item[type="button"]:focus-visible {
+  outline: 2px solid dodgerblue;
+  outline-offset: -2px;
+  background-color: #e8e8e8;
+} 

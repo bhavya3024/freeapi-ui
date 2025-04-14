@@ -1,0 +1,64 @@
+/* src/components/Users.css */
+
+.controls-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem; /* Spacing between control groups */
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  align-items: flex-end; /* Align items to the bottom for better button alignment */
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column; /* Stack label/input and button vertically */
+  gap: 0.5rem; /* Spacing within a group */
+  flex: 1 1 200px; /* Allow growing and shrinking, base width 200px */
+  min-width: 180px; /* Prevent becoming too small */
+}
+
+.control-group-row {
+  /* For filter and pagination where inputs are side-by-side */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1 1 300px; /* Allow more space */
+  min-width: 280px;
+}
+
+.input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center; /* Align items in the row */
+}
+
+.input-row md-outlined-text-field {
+  flex: 1; /* Allow text fields in a row to share space */
+}
+
+.control-group md-outlined-text-field,
+.control-group-row md-outlined-text-field {
+   width: 100%; /* Make text fields take full width of their container */
+   /* Reset default MWC margins if necessary */
+   margin: 0; 
+}
+
+.control-group md-filled-button,
+.control-group-row md-filled-button {
+   width: fit-content; /* Size button to content */
+   /* Adjust alignment if needed */
+   /* align-self: flex-start; */
+}
+
+.reload-button-container {
+  flex-basis: 100%; /* Make this take the full width */
+  text-align: center;
+  margin-top: 1rem;
+}
+
+/* Ensure list items have some padding */
+md-list-item {
+  padding: 0.5rem 0;
+} 
