@@ -21,12 +21,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col bg-gradient-to-br from-slate-50 to-blue-50`}
       >
         <Header />
         <div className="flex flex-1 overflow-hidden">
           <SideBar />
-          <main className="flex-1 overflow-hidden p-4">
+          <main className="flex-1 overflow-hidden p-6 bg-white/60 backdrop-blur-sm">
             {children}
           </main>
         </div>

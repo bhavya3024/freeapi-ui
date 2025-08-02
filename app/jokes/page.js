@@ -13,7 +13,7 @@ export default function JokesPage() {
     const fetchJokes = async () => {
       const { data: jokes, nextPage } = await getJokes({
         page,
-        results: 10,
+        results: 5,
       });
       setJokes(() => [...jokes]);
       setNextPage(() =>  nextPage);
