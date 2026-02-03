@@ -1,6 +1,7 @@
 'use client';
 import { getJokes } from "../../src/apis/jokes";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -8,15 +9,20 @@ export default function JokesPage() {
   const [page, setPage] = useState(1);
   const [jokes, setJokes] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchJokes = async () => {
-      const { data: jokes, nextPage } = await getJokes({
+      const { data: jokes, nextPage, totalItems, totalPages } = await getJokes({
         page,
         results: 5,
       });
-      setJokes(() => [...jokes]);
-      setNextPage(() =>  nextPage);
+      setJokes(jokes || []);
+      setNextPage(nextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchJokes();
   }, [page]);
@@ -28,7 +34,7 @@ export default function JokesPage() {
   ];
 
   const renderJokeRow = (joke) => (
-    <tr key={joke.id} className="border-b border-gray-200 hover:bg-gray-100" style={{ height: '45px' }}>
+    <tr key={joke.id} onClick={() => router.push(`/jokes/${joke.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
       <td className="py-2 px-4 text-left whitespace-nowrap">{joke.id}</td>
       <td className="py-2 px-4 text-left">
         <div className="max-w-md overflow-hidden">
@@ -61,6 +67,7 @@ export default function JokesPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -69,12 +76,15 @@ export default function JokesPage() {
         headers={headers}
         data={jokes}
         renderRow={renderJokeRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );

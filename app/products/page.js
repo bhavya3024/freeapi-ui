@@ -1,6 +1,7 @@
 'use client';
 import { getProducts } from "../../src/apis/products";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -8,15 +9,20 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [products, setProducts] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchProducts = async () => {
-      const { data: products, nextPage } = await getProducts({
+      const { data: products, nextPage, totalItems, totalPages } = await getProducts({
         page,
         results: 5,
       });
-      setProducts(() => [...products]);
-      setNextPage(() =>  nextPage);
+      setProducts(products || []);
+      setNextPage(nextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchProducts();
   }, [page]);
@@ -29,7 +35,7 @@ export default function ProductsPage() {
   ];
 
   const renderProductRow = (product) => (
-    <tr key={product.id} className="group hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 transition-all duration-200" style={{ height: '60px' }}>
+    <tr key={product.id} onClick={() => router.push(`/products/${product.id}`)} className="group hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 transition-all duration-200 cursor-pointer" style={{ height: '60px' }}>
       <td className="py-3 px-3 text-left">
         <div className="flex items-center space-x-2">
           {product.thumbnail && (
@@ -88,6 +94,7 @@ export default function ProductsPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -96,12 +103,15 @@ export default function ProductsPage() {
         headers={headers}
         data={products}
         renderRow={renderProductRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );

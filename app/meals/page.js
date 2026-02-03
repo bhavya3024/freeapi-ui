@@ -1,6 +1,7 @@
 'use client';
 import { getMeals } from "../../src/apis/meals";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -8,16 +9,20 @@ export default function MealsPage() {
   const [page, setPage] = useState(1);
   const [meals, setMeals] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchMeals = async () => {
-      const { data: { meals } } = await getMeals({
+      const { data: { data: meals, nextPage: hasNextPage, totalItems, totalPages } } = await getMeals({
         page,
         results: 5,
       });
-      console.log('MEALS --->>>', JSON.stringify(meals));
-      setMeals(() => [...meals]);
-      setNextPage(() => nextPage);
+      setMeals(meals || []);
+      setNextPage(hasNextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchMeals();
   }, [page]);
@@ -32,7 +37,7 @@ export default function MealsPage() {
   ];
 
   const renderMealRow = (meal) => (
-    <tr key={meal.id} className="border-b border-gray-200 hover:bg-gray-100" style={{ height: '45px' }}>
+    <tr key={meal.id} onClick={() => router.push(`/meals/${meal.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
       <td className="py-2 px-4 text-left">
         <img 
           src={meal.strMealThumb || 'N/A'} 
@@ -77,6 +82,7 @@ export default function MealsPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -85,12 +91,15 @@ export default function MealsPage() {
         headers={headers}
         data={meals}
         renderRow={renderMealRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );

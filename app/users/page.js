@@ -1,6 +1,7 @@
 'use client';
 import { getUsers } from "../../src/apis/users";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -10,6 +11,9 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [users, setUsers] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchUsers = async () => {
@@ -17,9 +21,11 @@ export default function UsersPage() {
         page,
         results: 5,
       });
-      const { data: users, nextPage } = data;
-      setUsers(() => [...users]);
-      setNextPage(() =>  nextPage);
+      const { data: users, nextPage, totalItems, totalPages } = data;
+      setUsers(users || []);
+      setNextPage(nextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchUsers();
   }, [page]);
@@ -33,7 +39,7 @@ export default function UsersPage() {
   ];
 
   const renderUserRow = (user) => (
-    <tr key={user.id} className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200" style={{ height: '55px' }}>
+    <tr key={user.id} onClick={() => router.push(`/users/${user.id}`)} className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200 cursor-pointer" style={{ height: '55px' }}>
       <td className="py-3 px-3 text-left">
         <span className="inline-flex items-center justify-center w-7 h-7 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold rounded-lg">
           {user.id}
@@ -78,6 +84,7 @@ export default function UsersPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -86,12 +93,15 @@ export default function UsersPage() {
         headers={headers}
         data={users}
         renderRow={renderUserRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 import { getQuotes } from "../../src/apis/quotes";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -8,15 +9,20 @@ export default function QuotesPage() {
   const [page, setPage] = useState(1);
   const [quotes, setQuotes] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchQuotes = async () => {
-      const { data: { data: quotes, nextPage } } = await getQuotes({
+      const { data: { data: quotes, nextPage, totalItems, totalPages } } = await getQuotes({
         page,
         limit: 5,
       });
-      setQuotes(() => [...quotes]);
-      setNextPage(() => nextPage);
+      setQuotes(quotes || []);
+      setNextPage(nextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchQuotes();
   }, [page]);
@@ -29,7 +35,7 @@ export default function QuotesPage() {
   ];
 
   const renderQuoteRow = (quote) => (
-    <tr key={quote.id} className="border-b border-gray-200 hover:bg-gray-100" style={{ height: '45px' }}>
+    <tr key={quote.id} onClick={() => router.push(`/quotes/${quote.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
       <td className="py-2 px-4 text-left">
         <span className="text-sm font-medium text-blue-600">{quote.author || 'N/A'}</span>
       </td>
@@ -56,6 +62,7 @@ export default function QuotesPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -64,12 +71,15 @@ export default function QuotesPage() {
         headers={headers}
         data={quotes}
         renderRow={renderQuoteRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );

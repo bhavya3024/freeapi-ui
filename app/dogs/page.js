@@ -1,6 +1,7 @@
 'use client';
 import { getDogs } from "../../src/apis/dogs";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -8,16 +9,21 @@ export default function DogsPage() {
   const [page, setPage] = useState(1);
   const [dogs, setDogs] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchDogs = async () => {
-      const { data: { data: dogs, nextPage } } = await getDogs({
+      const { data: { data: dogs, nextPage, totalItems, totalPages } } = await getDogs({
         page,
         limit: 5,
       });
       console.log('DOGS --->>>', JSON.stringify(dogs));
-      setDogs(() => [...dogs]);
-      setNextPage(() => nextPage);
+      setDogs(dogs || []);
+      setNextPage(nextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchDogs();
   }, [page]);
@@ -33,7 +39,7 @@ export default function DogsPage() {
   ];
 
   const renderDogRow = (dog) => (
-    <tr key={dog.id} className="border-b border-gray-200 hover:bg-gray-100" style={{ height: '45px' }}>
+    <tr key={dog.id} onClick={() => router.push(`/dogs/${dog.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
       <td className="py-2 px-4 text-left">
         <img 
           src={dog.image?.url || 'N/A'} 
@@ -76,6 +82,7 @@ export default function DogsPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -84,12 +91,15 @@ export default function DogsPage() {
         headers={headers}
         data={dogs}
         renderRow={renderDogRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );

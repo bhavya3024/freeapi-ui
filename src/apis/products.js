@@ -1,13 +1,10 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://api.freeapi.app/api/v1/public/randomproducts';
-
-
 export const getProducts = async ({
     page = 1,
     results = 10,
 }) => {
-    const { data: { data } } =  await axios.get(BASE_URL, {
+    const { data: { data } } = await axios.get('/api/products', {
         params: {
             page,
             results
@@ -15,3 +12,8 @@ export const getProducts = async ({
     });
     return data;
 }
+
+export const getProductById = async (id) => {
+    const { data } = await axios.get(`/api/products/${id}`);
+    return data;
+};

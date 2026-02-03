@@ -1,6 +1,7 @@
 'use client';
 import { getCats } from "../../src/apis/cats";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -8,16 +9,21 @@ export default function CatsPage() {
   const [page, setPage] = useState(1);
   const [cats, setCats] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchCats = async () => {
-      const { data: { data: cats, nextPage } } = await getCats({
+      const { data: { data: cats, nextPage, totalItems, totalPages } } = await getCats({
         page,
         limit: 5,
       });
       console.log('CATS --->>>', JSON.stringify(cats));
-      setCats(() => [...cats]);
-      setNextPage(() => nextPage);
+      setCats(cats || []);
+      setNextPage(nextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchCats();
   }, [page]);
@@ -33,7 +39,7 @@ export default function CatsPage() {
   ];
 
   const renderCatRow = (cat) => (
-    <tr key={cat.id} className="border-b border-gray-200 hover:bg-gray-100" style={{ height: '45px' }}>
+    <tr key={cat.id} onClick={() => router.push(`/cats/${cat.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
       <td className="py-2 px-4 text-left">
         <img 
           src={cat.image || 'N/A'} 
@@ -79,6 +85,7 @@ export default function CatsPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -87,12 +94,15 @@ export default function CatsPage() {
         headers={headers}
         data={cats}
         renderRow={renderCatRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );

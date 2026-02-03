@@ -1,16 +1,19 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://api.freeapi.app/api/v1/public/stocks';
-
 export const getStocks = async ({
     page = 1,
     results = 10,
 }) => {
-    const { data: { data } } = await axios.get(BASE_URL, {
+    const { data: { data } } = await axios.get('/api/stocks', {
         params: {
             page,
             results
         }
     });
+    return data;
+};
+
+export const getStockBySymbol = async (symbol) => {
+    const { data } = await axios.get(`/api/stocks/${symbol}`);
     return data;
 };

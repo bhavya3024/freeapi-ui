@@ -1,6 +1,7 @@
 'use client';
 import { getVideos } from "../../src/apis/videos";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -8,15 +9,20 @@ export default function VideosPage() {
   const [page, setPage] = useState(1);
   const [videos, setVideos] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchVideos = async () => {
-      const { data: { data: videos, nextPage } } = await getVideos({
+      const { data: { data: videos, nextPage, totalItems, totalPages } } = await getVideos({
         page,
         limit: 5,
       });
-      setVideos(() => [...videos]);
-      setNextPage(() => nextPage);
+      setVideos(videos || []);
+      setNextPage(nextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchVideos();
   }, [page]);
@@ -33,7 +39,7 @@ export default function VideosPage() {
   const renderVideoRow = (video) => {
     const videoData = video.items;
     return (
-      <tr key={videoData.id} className="border-b border-gray-200 hover:bg-gray-100" style={{ height: '45px' }}>
+      <tr key={videoData.id} onClick={() => router.push(`/videos/${videoData.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
         <td className="py-2 px-4 text-left">
           <img 
             src={videoData.snippet?.thumbnails?.default?.url || 'N/A'} 
@@ -78,6 +84,7 @@ export default function VideosPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -86,12 +93,15 @@ export default function VideosPage() {
         headers={headers}
         data={videos}
         renderRow={renderVideoRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );

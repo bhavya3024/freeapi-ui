@@ -1,13 +1,10 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://api.freeapi.app/api/v1/public/books';
-
-
 export const getBooks = async ({
     page = 1,
     results = 10,
 }) => {
-    const { data: { data } } =  await axios.get(BASE_URL, {
+    const { data: { data } } = await axios.get('/api/books', {
         params: {
             page,
             results
@@ -15,3 +12,8 @@ export const getBooks = async ({
     });
     return data;
 }
+
+export const getBookById = async (id) => {
+    const { data } = await axios.get(`/api/books/${id}`);
+    return data;
+};

@@ -1,6 +1,7 @@
 'use client';
 import { getStocks } from "../../src/apis/stocks";
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Table from "../../src/components/Table";
 import Pagination from "../../src/components/Pagination";
 
@@ -8,15 +9,20 @@ export default function StocksPage() {
   const [page, setPage] = useState(1);
   const [stocks, setStocks] = useState([]);
   const [nextPage, setNextPage] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchStocks = async () => {
-      const { data: stocks, nextPage } = await getStocks({
+      const { data: stocks, nextPage, totalItems, totalPages } = await getStocks({
         page,
         results: 5,
       });
-      setStocks(() => [...stocks]);
-      setNextPage(() =>  nextPage);
+      setStocks(stocks || []);
+      setNextPage(nextPage);
+      setTotalItems(totalItems);
+      setTotalPages(totalPages);
     }
     fetchStocks();
   }, [page]);
@@ -33,7 +39,7 @@ export default function StocksPage() {
   ];
 
   const renderStockRow = (stock) => (
-    <tr key={stock.Symbol} className="border-b border-gray-200 hover:bg-gray-100" style={{ height: '45px' }}>
+    <tr key={stock.Symbol} onClick={() => router.push(`/stocks/${stock.Symbol}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
       <td className="py-2 px-4 text-left whitespace-nowrap">
         <span className="font-mono text-sm font-semibold text-blue-600">{stock.Symbol || 'N/A'}</span>
       </td>
@@ -86,6 +92,7 @@ export default function StocksPage() {
 
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => p + 1);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   return (
     <div>
@@ -94,12 +101,15 @@ export default function StocksPage() {
         headers={headers}
         data={stocks}
         renderRow={renderStockRow}
+        totalItems={totalItems}
       />
       <Pagination
         page={page}
         nextPage={nextPage}
+        totalPages={totalPages}
         onPrevious={handlePrevious}
         onNext={handleNext}
+        onPageChange={handlePageChange}
       />
     </div>
   );
