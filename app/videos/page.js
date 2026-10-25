@@ -1,108 +1,99 @@
 'use client';
 import { getVideos } from "../../src/apis/videos";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Table from "../../src/components/Table";
-import Pagination from "../../src/components/Pagination";
+import Collection from "../../src/components/Collection";
+import { MediaCard } from "../../src/components/Cards";
+import ShimmerImage from "../../src/components/ShimmerImage";
+import { formatCompact, formatDate, formatDuration } from "../../src/lib/format";
+
+// Each list entry wraps the YouTube resource in `items`
+const videoOf = (entry) => entry.items || entry;
+
+const thumbnail = (snippet) =>
+  snippet?.thumbnails?.high?.url || snippet?.thumbnails?.medium?.url || snippet?.thumbnails?.default?.url;
+
+const columns = [
+  {
+    key: 'video',
+    label: 'Video',
+    skeleton: 'media',
+    render: (entry) => {
+      const { snippet } = videoOf(entry);
+      return (
+        <div className="flex items-center gap-3">
+          <ShimmerImage src={snippet?.thumbnails?.default?.url} alt="" fallbackIcon="video" className="h-10 w-16 shrink-0 rounded-md" />
+          <p className="line-clamp-2 max-w-md font-medium text-fg">{snippet?.title || 'Untitled video'}</p>
+        </div>
+      );
+    },
+  },
+  {
+    key: 'duration',
+    label: 'Duration',
+    align: 'right',
+    render: (entry) => (
+      <span className="font-mono text-[13px] tabular-nums text-muted">{formatDuration(videoOf(entry).contentDetails?.duration) || '—'}</span>
+    ),
+  },
+  {
+    key: 'views',
+    label: 'Views',
+    align: 'right',
+    render: (entry) => <span className="tabular-nums text-muted">{formatCompact(videoOf(entry).statistics?.viewCount)}</span>,
+  },
+  {
+    key: 'likes',
+    label: 'Likes',
+    align: 'right',
+    render: (entry) => <span className="tabular-nums text-muted">{formatCompact(videoOf(entry).statistics?.likeCount)}</span>,
+  },
+  {
+    key: 'published',
+    label: 'Published',
+    align: 'right',
+    render: (entry) => (
+      <span className="whitespace-nowrap tabular-nums text-muted">{formatDate(videoOf(entry).snippet?.publishedAt) || '—'}</span>
+    ),
+  },
+];
+
+const renderCard = (entry) => {
+  const video = videoOf(entry);
+  const duration = formatDuration(video.contentDetails?.duration);
+  return (
+    <MediaCard
+      image={thumbnail(video.snippet)}
+      alt={video.snippet?.title}
+      aspect="aspect-video"
+      fallbackIcon="video"
+      overlay={
+        duration && (
+          <span className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[11px] font-medium text-white">
+            {duration}
+          </span>
+        )
+      }
+      title={video.snippet?.title || 'Untitled video'}
+      titleLines={2}
+      subtitle={video.snippet?.channelTitle || 'YouTube'}
+      meta={
+        <>
+          <span className="text-xs tabular-nums text-subtle">{formatCompact(video.statistics?.viewCount)} views</span>
+          <span className="text-xs tabular-nums text-subtle">{formatDate(video.snippet?.publishedAt)}</span>
+        </>
+      }
+    />
+  );
+};
 
 export default function VideosPage() {
-  const [page, setPage] = useState(1);
-  const [videos, setVideos] = useState([]);
-  const [nextPage, setNextPage] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const router = useRouter();
-  
-  useEffect(() => {
-    const fetchVideos = async () => {
-      const { data: { data: videos, nextPage, totalItems, totalPages } } = await getVideos({
-        page,
-        limit: 5,
-      });
-      setVideos(videos || []);
-      setNextPage(nextPage);
-      setTotalItems(totalItems);
-      setTotalPages(totalPages);
-    }
-    fetchVideos();
-  }, [page]);
-
-  const headers = [
-    { label: 'Thumbnail', align: 'left' },
-    { label: 'Title', align: 'left' },
-    { label: 'Channel', align: 'left' },
-    { label: 'Duration', align: 'left' },
-    { label: 'Views', align: 'left' },
-    { label: 'Published', align: 'left' }
-  ];
-
-  const renderVideoRow = (video) => {
-    const videoData = video.items;
-    return (
-      <tr key={videoData.id} onClick={() => router.push(`/videos/${videoData.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
-        <td className="py-2 px-4 text-left">
-          <img 
-            src={videoData.snippet?.thumbnails?.default?.url || 'N/A'} 
-            alt={videoData.snippet?.title || 'Video'} 
-            className="w-16 h-10 rounded object-cover"
-            onError={(e) => {
-              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxNkM4IDcgOCAzMyAyMCAyNFMyMCA3IDIwIDE2WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
-            }}
-          />
-        </td>
-        <td className="py-2 px-4 text-left">
-          <span className="text-sm font-medium">
-            {videoData.snippet?.title && videoData.snippet.title.length > 40 
-              ? `${videoData.snippet.title.substring(0, 40)}...` 
-              : videoData.snippet?.title || 'N/A'
-            }
-          </span>
-        </td>
-        <td className="py-2 px-4 text-left">
-          <span className="text-xs text-gray-600">
-            {videoData.snippet?.channelTitle || 'N/A'}
-          </span>
-        </td>
-        <td className="py-2 px-4 text-left">
-          <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
-            {videoData.contentDetails?.duration?.replace('PT', '').replace('M', ':').replace('S', '') || 'N/A'}
-          </span>
-        </td>
-        <td className="py-2 px-4 text-left">
-          <span className="text-xs text-green-600">
-            {videoData.statistics?.viewCount ? `${(videoData.statistics.viewCount / 1000).toFixed(1)}K` : 'N/A'}
-          </span>
-        </td>
-        <td className="py-2 px-4 text-left">
-          <span className="text-xs text-gray-500">
-            {videoData.snippet?.publishedAt ? new Date(videoData.snippet.publishedAt).toLocaleDateString() : 'N/A'}
-          </span>
-        </td>
-      </tr>
-    );
-  };
-
-  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => p + 1);
-  const handlePageChange = (newPage) => setPage(newPage);
-
   return (
-    <div>
-      <Table
-        title="YouTube Videos"
-        headers={headers}
-        data={videos}
-        renderRow={renderVideoRow}
-        totalItems={totalItems}
-      />
-      <Pagination
-        page={page}
-        nextPage={nextPage}
-        totalPages={totalPages}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onPageChange={handlePageChange}
-      />
-    </div>
+    <Collection
+      slug="videos"
+      fetchPage={getVideos}
+      getKey={(entry) => videoOf(entry).id}
+      getHref={(entry) => `/videos/${videoOf(entry).id}`}
+      renderCard={renderCard}
+      columns={columns}
+    />
   );
 }

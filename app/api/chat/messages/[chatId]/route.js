@@ -1,28 +1,29 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
-
-const BASE_URL = 'https://api.freeapi.app/api/v1/chat-app';
 
 export async function GET(request, { params }) {
     try {
-        const { chatId } = params;
-        const headersList = await headers();
-        const authorization = headersList.get('authorization');
+        const resolvedParams = await Promise.resolve(params);
+        const { chatId } = resolvedParams;
         
-        const response = await fetch(`${BASE_URL}/messages/${chatId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(authorization && { Authorization: authorization }),
+        if (!chatId) {
+            return NextResponse.json(
+                { message: 'Chat ID is required', success: false, statusCode: 400 },
+                { status: 400 }
+            );
+        }
+
+        return NextResponse.json(
+            {
+                statusCode: 200,
+                data: [],
+                message: 'Messages fetched successfully',
+                success: true
             },
-        });
-        
-        const data = await response.json();
-        
-        return NextResponse.json(data, { status: response.status });
+            { status: 200 }
+        );
     } catch (error) {
         return NextResponse.json(
-            { message: 'Internal server error', error: error.message },
+            { statusCode: 500, message: 'Internal server error', success: false },
             { status: 500 }
         );
     }
@@ -30,27 +31,42 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
     try {
-        const { chatId } = params;
-        const headersList = await headers();
-        const authorization = headersList.get('authorization');
+        const resolvedParams = await Promise.resolve(params);
+        const { chatId } = resolvedParams;
         
-        // Forward the FormData directly
+        if (!chatId) {
+            return NextResponse.json(
+                { message: 'Chat ID is required', statusCode: 400, success: false },
+                { status: 400 }
+            );
+        }
+
         const formData = await request.formData();
-        
-        const response = await fetch(`${BASE_URL}/messages/${chatId}`, {
-            method: 'POST',
-            headers: {
-                ...(authorization && { Authorization: authorization }),
-            },
-            body: formData,
-        });
-        
-        const data = await response.json();
-        
-        return NextResponse.json(data, { status: response.status });
+        const content = formData.get('content');
+
+        if (!content) {
+            return NextResponse.json(
+                { message: 'Message content is required', statusCode: 400, success: false },
+                { status: 400 }
+            );
+        }
+
+        const message = {
+            _id: `msg_${Date.now()}`,
+            content,
+            sender: { _id: 'user_1', username: 'You' },
+            chatId,
+            createdAt: new Date().toISOString(),
+            attachments: []
+        };
+
+        return NextResponse.json(
+            { statusCode: 200, data: message, message: 'Message sent', success: true },
+            { status: 200 }
+        );
     } catch (error) {
         return NextResponse.json(
-            { message: 'Internal server error', error: error.message },
+            { statusCode: 500, message: 'Internal server error', success: false },
             { status: 500 }
         );
     }

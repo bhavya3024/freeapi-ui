@@ -1,91 +1,68 @@
 'use client';
 import { getJokes } from "../../src/apis/jokes";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Table from "../../src/components/Table";
-import Pagination from "../../src/components/Pagination";
+import Collection from "../../src/components/Collection";
+import { TextCard } from "../../src/components/Cards";
+import { Badge } from "../../src/components/ui";
 
-export default function JokesPage() {
-  const [page, setPage] = useState(1);
-  const [jokes, setJokes] = useState([]);
-  const [nextPage, setNextPage] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const router = useRouter();
-  
-  useEffect(() => {
-    const fetchJokes = async () => {
-      const { data: jokes, nextPage, totalItems, totalPages } = await getJokes({
-        page,
-        results: 5,
-      });
-      setJokes(jokes || []);
-      setNextPage(nextPage);
-      setTotalItems(totalItems);
-      setTotalPages(totalPages);
-    }
-    fetchJokes();
-  }, [page]);
-
-  const headers = [
-    { label: 'ID', align: 'left' },
-    { label: 'Content', align: 'left' },
-    { label: 'Categories', align: 'left' }
-  ];
-
-  const renderJokeRow = (joke) => (
-    <tr key={joke.id} onClick={() => router.push(`/jokes/${joke.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
-      <td className="py-2 px-4 text-left whitespace-nowrap">{joke.id}</td>
-      <td className="py-2 px-4 text-left">
-        <div className="max-w-md overflow-hidden">
-          <p className="text-sm">
-            {joke.content.length > 100 
-              ? `${joke.content.substring(0, 100)}...` 
-              : joke.content
-            }
-          </p>
-        </div>
-      </td>
-      <td className="py-2 px-4 text-left">
-        {joke.categories && joke.categories.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {joke.categories.map((category, index) => (
-              <span 
-                key={index}
-                className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded"
-              >
-                {category}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <span className="text-gray-400 text-xs">No categories</span>
-        )}
-      </td>
-    </tr>
+const Categories = ({ joke }) =>
+  joke.categories?.length ? (
+    joke.categories.map((c) => (
+      <Badge key={c} tone="amber" className="capitalize">
+        {c}
+      </Badge>
+    ))
+  ) : (
+    <Badge>general</Badge>
   );
 
-  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => p + 1);
-  const handlePageChange = (newPage) => setPage(newPage);
+const columns = [
+  { key: 'id', label: 'ID', render: (j) => <span className="font-mono text-xs text-subtle">#{j.id}</span> },
+  {
+    key: 'joke',
+    label: 'Joke',
+    skeleton: 'lines',
+    render: (j) => <p className="line-clamp-2 max-w-2xl text-fg">{j.content}</p>,
+  },
+  {
+    key: 'categories',
+    label: 'Category',
+    align: 'right',
+    skeleton: 'badge',
+    render: (j) => (
+      <div className="flex justify-end gap-1">
+        <Categories joke={j} />
+      </div>
+    ),
+  },
+];
 
+const renderCard = (j) => (
+  <TextCard
+    eyebrow={<span className="font-mono text-xs text-subtle">#{j.id}</span>}
+    footer={
+      <>
+        <span className="text-xs font-medium text-accent-text opacity-0 transition-opacity group-hover:opacity-100">
+          Read joke →
+        </span>
+        <span className="flex gap-1">
+          <Categories joke={j} />
+        </span>
+      </>
+    }
+  >
+    <p className="line-clamp-4">{j.content}</p>
+  </TextCard>
+);
+
+export default function JokesPage() {
   return (
-    <div>
-      <Table
-        title="Jokes"
-        headers={headers}
-        data={jokes}
-        renderRow={renderJokeRow}
-        totalItems={totalItems}
-      />
-      <Pagination
-        page={page}
-        nextPage={nextPage}
-        totalPages={totalPages}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onPageChange={handlePageChange}
-      />
-    </div>
+    <Collection
+      slug="jokes"
+      fetchPage={getJokes}
+      getKey={(j) => j.id}
+      getHref={(j) => `/jokes/${j.id}`}
+      renderCard={renderCard}
+      columns={columns}
+    />
   );
 }

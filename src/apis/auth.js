@@ -64,3 +64,8 @@ export const refreshAccessToken = async () => {
     }
     return data;
 };
+
+export const getGeneratedCredentials = async () => {
+    const { data } = await authApi.get('/generated-credentials');
+    return data;
+};

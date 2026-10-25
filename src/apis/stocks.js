@@ -17,3 +17,8 @@ export const getStockBySymbol = async (symbol) => {
     const { data } = await axios.get(`/api/stocks/${symbol}`);
     return data;
 };
+
+export const getRandomStock = async () => {
+    const { data: { data } } = await axios.get('/api/stocks/random');
+    return data;
+};

@@ -17,3 +17,8 @@ export const getJokeById = async (id) => {
     const { data } = await axios.get(`/api/jokes/${id}`);
     return data;
 };
+
+export const getRandomJoke = async () => {
+    const { data: { data } } = await axios.get('/api/jokes/random');
+    return data;
+};

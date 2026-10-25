@@ -4,13 +4,18 @@ export const getUsers = async ({
     page = 1,
     results = 10,
 }) => {
-    const { data } = await axios.get('/api/users', {
+    const { data: { data: users } } = await axios.get('/api/users', {
         params: {
             page,
             results,
         },
     });
 
+    return users;
+};
+
+export const getRandomUser = async () => {
+    const { data: { data } } = await axios.get('/api/users/random');
     return data;
 };
 

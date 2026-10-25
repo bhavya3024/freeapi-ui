@@ -1,106 +1,63 @@
 'use client';
 import { getMeals } from "../../src/apis/meals";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Table from "../../src/components/Table";
-import Pagination from "../../src/components/Pagination";
+import Collection from "../../src/components/Collection";
+import { MediaCard } from "../../src/components/Cards";
+import ShimmerImage from "../../src/components/ShimmerImage";
+import { Badge } from "../../src/components/ui";
+
+const firstTag = (meal) => meal.strTags?.split(',')[0]?.trim();
+
+const columns = [
+  {
+    key: 'dish',
+    label: 'Dish',
+    skeleton: 'media',
+    render: (meal) => (
+      <div className="flex items-center gap-3">
+        <ShimmerImage src={meal.strMealThumb} alt="" fallbackIcon="utensils" className="h-10 w-10 shrink-0 rounded-lg" />
+        <p className="max-w-72 truncate font-medium text-fg">{meal.strMeal || 'Untitled dish'}</p>
+      </div>
+    ),
+  },
+  {
+    key: 'category',
+    label: 'Category',
+    skeleton: 'badge',
+    render: (meal) => <Badge tone="teal">{meal.strCategory || 'General'}</Badge>,
+  },
+  { key: 'area', label: 'Cuisine', render: (meal) => <span className="text-muted">{meal.strArea || '—'}</span> },
+  {
+    key: 'instructions',
+    label: 'Instructions',
+    render: (meal) => <span className="block max-w-80 truncate text-muted">{meal.strInstructions || '—'}</span>,
+  },
+];
+
+const renderCard = (meal) => (
+  <MediaCard
+    image={meal.strMealThumb}
+    alt={meal.strMeal}
+    fallbackIcon="utensils"
+    title={meal.strMeal || 'Untitled dish'}
+    subtitle={meal.strArea ? `${meal.strArea} cuisine` : '—'}
+    meta={
+      <>
+        <Badge tone="teal">{meal.strCategory || 'General'}</Badge>
+        {firstTag(meal) && <span className="truncate text-xs text-subtle">#{firstTag(meal)}</span>}
+      </>
+    }
+  />
+);
 
 export default function MealsPage() {
-  const [page, setPage] = useState(1);
-  const [meals, setMeals] = useState([]);
-  const [nextPage, setNextPage] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const router = useRouter();
-  
-  useEffect(() => {
-    const fetchMeals = async () => {
-      const { data: { data: meals, nextPage: hasNextPage, totalItems, totalPages } } = await getMeals({
-        page,
-        results: 5,
-      });
-      setMeals(meals || []);
-      setNextPage(hasNextPage);
-      setTotalItems(totalItems);
-      setTotalPages(totalPages);
-    }
-    fetchMeals();
-  }, [page]);
-
-  const headers = [
-    { label: 'Image', align: 'left' },
-    { label: 'Meal', align: 'left' },
-    { label: 'Category', align: 'left' },
-    { label: 'Area', align: 'left' },
-    { label: 'Instructions', align: 'left' },
-    { label: 'Tags', align: 'left' }
-  ];
-
-  const renderMealRow = (meal) => (
-    <tr key={meal.id} onClick={() => router.push(`/meals/${meal.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
-      <td className="py-2 px-4 text-left">
-        <img 
-          src={meal.strMealThumb || 'N/A'} 
-          alt={meal.strMeal || 'Meal'} 
-          className="w-10 h-10 rounded-full object-cover"
-          onError={(e) => {
-            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxNkM4IDcgOCAzMyAyMCAyNFMyMCA3IDIwIDE2WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
-          }}
-        />
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm font-medium">
-          {meal.strMeal && meal.strMeal.length > 25 
-            ? `${meal.strMeal.substring(0, 25)}...` 
-            : meal.strMeal || 'N/A'
-          }
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-          {meal.strCategory || 'N/A'}
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm">{meal.strArea || 'N/A'}</span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs text-gray-600">
-          {meal.strInstructions && meal.strInstructions.length > 50 
-            ? `${meal.strInstructions.substring(0, 50)}...` 
-            : meal.strInstructions || 'N/A'
-          }
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs text-gray-500">
-          {meal.strTags || 'N/A'}
-        </span>
-      </td>
-    </tr>
-  );
-
-  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => p + 1);
-  const handlePageChange = (newPage) => setPage(newPage);
-
   return (
-    <div>
-      <Table
-        title="Meals"
-        headers={headers}
-        data={meals}
-        renderRow={renderMealRow}
-        totalItems={totalItems}
-      />
-      <Pagination
-        page={page}
-        nextPage={nextPage}
-        totalPages={totalPages}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onPageChange={handlePageChange}
-      />
-    </div>
+    <Collection
+      slug="meals"
+      fetchPage={getMeals}
+      getKey={(meal) => meal.id}
+      getHref={(meal) => `/meals/${meal.id}`}
+      renderCard={renderCard}
+      columns={columns}
+    />
   );
 }

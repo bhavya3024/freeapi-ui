@@ -1,116 +1,69 @@
 'use client';
 import { getStocks } from "../../src/apis/stocks";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Table from "../../src/components/Table";
-import Pagination from "../../src/components/Pagination";
+import Collection from "../../src/components/Collection";
+import { StatCard } from "../../src/components/Cards";
+import { Badge } from "../../src/components/ui";
+import { signTone } from "../../src/lib/format";
+
+const TONE_TEXT = {
+  positive: 'text-emerald-600 dark:text-emerald-400',
+  negative: 'text-rose-600 dark:text-rose-400',
+};
+
+const Ticker = ({ stock }) => (
+  <Badge tone="rose" className="font-mono">
+    {stock.Symbol}
+  </Badge>
+);
+
+const columns = [
+  {
+    key: 'company',
+    label: 'Company',
+    skeleton: 'lines',
+    render: (s) => (
+      <div className="min-w-0">
+        <p className="max-w-64 truncate font-medium text-fg">{s.Name || 'Unknown company'}</p>
+        <p className="font-mono text-xs text-subtle">{s.Symbol}</p>
+      </div>
+    ),
+  },
+  { key: 'price', label: 'Price', align: 'right', render: (s) => <span className="font-medium tabular-nums text-fg">{s.CurrentPrice || '—'}</span> },
+  { key: 'cap', label: 'Market cap', align: 'right', render: (s) => <span className="whitespace-nowrap tabular-nums text-muted">{s.MarketCap || '—'}</span> },
+  { key: 'range', label: '52w high / low', align: 'right', render: (s) => <span className="whitespace-nowrap tabular-nums text-muted">{s.HighLow || '—'}</span> },
+  { key: 'pe', label: 'P/E', align: 'right', render: (s) => <span className="tabular-nums text-muted">{s.StockPE || '—'}</span> },
+  {
+    key: 'roe',
+    label: 'ROE',
+    align: 'right',
+    render: (s) => <span className={`tabular-nums ${TONE_TEXT[signTone(s.ROE)] || 'text-muted'}`}>{s.ROE || '—'}</span>,
+  },
+  { key: 'yield', label: 'Div. yield', align: 'right', render: (s) => <span className="tabular-nums text-muted">{s.DividendYield || '—'}</span> },
+];
+
+const renderCard = (s) => (
+  <StatCard
+    badge={<Ticker stock={s} />}
+    caption={s.ListingDate ? `Listed ${s.ListingDate}` : ''}
+    title={s.Name || 'Unknown company'}
+    value={s.CurrentPrice || '—'}
+    stats={[
+      { label: 'Mkt cap', value: s.MarketCap?.replace(' Cr.', ' Cr') },
+      { label: 'P/E', value: s.StockPE },
+      { label: 'ROE', value: s.ROE, className: TONE_TEXT[signTone(s.ROE)] },
+    ]}
+  />
+);
 
 export default function StocksPage() {
-  const [page, setPage] = useState(1);
-  const [stocks, setStocks] = useState([]);
-  const [nextPage, setNextPage] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const router = useRouter();
-  
-  useEffect(() => {
-    const fetchStocks = async () => {
-      const { data: stocks, nextPage, totalItems, totalPages } = await getStocks({
-        page,
-        results: 5,
-      });
-      setStocks(stocks || []);
-      setNextPage(nextPage);
-      setTotalItems(totalItems);
-      setTotalPages(totalPages);
-    }
-    fetchStocks();
-  }, [page]);
-
-  const headers = [
-    { label: 'Symbol', align: 'left' },
-    { label: 'Name', align: 'left' },
-    { label: 'Price', align: 'left' },
-    { label: 'Market Cap', align: 'left' },
-    { label: 'High/Low', align: 'left' },
-    { label: 'P/E', align: 'left' },
-    { label: 'ROE', align: 'left' },
-    { label: 'Dividend', align: 'left' }
-  ];
-
-  const renderStockRow = (stock) => (
-    <tr key={stock.Symbol} onClick={() => router.push(`/stocks/${stock.Symbol}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
-      <td className="py-2 px-4 text-left whitespace-nowrap">
-        <span className="font-mono text-sm font-semibold text-blue-600">{stock.Symbol || 'N/A'}</span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <div className="max-w-md overflow-hidden">
-          <p className="text-sm font-medium">
-            {stock.Name && stock.Name.length > 40 
-              ? `${stock.Name.substring(0, 40)}...` 
-              : stock.Name || 'N/A'
-            }
-          </p>
-        </div>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm font-semibold text-green-600">
-          {stock.CurrentPrice || 'N/A'}
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm">
-          {stock.MarketCap || 'N/A'}
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs text-gray-600">
-          {stock.HighLow || 'N/A'}
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm">
-          {stock.StockPE || 'N/A'}
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className={`text-sm ${
-          stock.ROE && stock.ROE.includes('-') 
-            ? 'text-red-600' 
-            : 'text-green-600'
-        }`}>
-          {stock.ROE || 'N/A'}
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm">
-          {stock.DividendYield || 'N/A'}
-        </span>
-      </td>
-    </tr>
-  );
-
-  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => p + 1);
-  const handlePageChange = (newPage) => setPage(newPage);
-
   return (
-    <div>
-      <Table
-        title="Stocks"
-        headers={headers}
-        data={stocks}
-        renderRow={renderStockRow}
-        totalItems={totalItems}
-      />
-      <Pagination
-        page={page}
-        nextPage={nextPage}
-        totalPages={totalPages}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onPageChange={handlePageChange}
-      />
-    </div>
+    <Collection
+      slug="stocks"
+      fetchPage={getStocks}
+      getKey={(s) => s.Symbol}
+      getHref={(s) => `/stocks/${encodeURIComponent(s.Symbol)}`}
+      renderCard={renderCard}
+      columns={columns}
+    />
   );
 }

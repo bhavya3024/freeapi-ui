@@ -17,3 +17,8 @@ export const getBookById = async (id) => {
     const { data } = await axios.get(`/api/books/${id}`);
     return data;
 };
+
+export const getRandomBook = async () => {
+    const { data: { data } } = await axios.get('/api/books/random');
+    return data;
+};

@@ -1,117 +1,101 @@
 'use client';
-import { getUserById } from "../../../src/apis/users";
-import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
+import { getUserById } from "../../../src/apis/users";
+import { DetailBody, DetailLayout, Hero, HeroTitle, InfoList, InfoRow, Panel } from "../../../src/components/Detail";
+import Icon from "../../../src/components/Icon";
+import ShimmerImage from "../../../src/components/ShimmerImage";
+import { Badge, buttonStyles } from "../../../src/components/ui";
+import { useResource } from "../../../src/hooks/useFetch";
+import { formatDate } from "../../../src/lib/format";
+import UserSkeleton from "./skeleton";
+
+function UserDetail({ user }) {
+  const { name = {}, location = {}, login = {} } = user;
+  const street = [location.street?.number, location.street?.name].filter(Boolean).join(' ');
+
+  return (
+    <>
+      <Hero
+        mediaClassName="w-auto"
+        media={<ShimmerImage src={user.picture?.large} alt="" fallbackIcon="users" className="h-28 w-28 rounded-full" />}
+      >
+        <HeroTitle
+          badges={
+            <>
+              <Badge tone="blue">#{user.id}</Badge>
+              {user.gender && <Badge className="capitalize">{user.gender}</Badge>}
+              {user.nat && <Badge icon="globe">{user.nat}</Badge>}
+            </>
+          }
+          title={[name.title, name.first, name.last].filter(Boolean).join(' ')}
+          subtitle={login.username && `@${login.username}`}
+        />
+        <div className="mt-5 flex flex-wrap gap-2">
+          {user.email && (
+            <a href={`mailto:${user.email}`} className={buttonStyles()}>
+              <Icon name="mail" />
+              Email
+            </a>
+          )}
+          {user.phone && (
+            <a href={`tel:${user.phone}`} className={buttonStyles()}>
+              <Icon name="phone" />
+              Call
+            </a>
+          )}
+        </div>
+      </Hero>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Panel title="Contact" icon="mail">
+          <InfoList>
+            <InfoRow label="Email">{user.email}</InfoRow>
+            <InfoRow label="Phone" mono>{user.phone}</InfoRow>
+            <InfoRow label="Cell" mono>{user.cell}</InfoRow>
+          </InfoList>
+        </Panel>
+        <Panel title="Location" icon="pin">
+          <InfoList>
+            <InfoRow label="Street">{street}</InfoRow>
+            <InfoRow label="City">{[location.city, location.state].filter(Boolean).join(', ')}</InfoRow>
+            <InfoRow label="Country">{location.country}</InfoRow>
+            <InfoRow label="Postcode" mono>{location.postcode}</InfoRow>
+            <InfoRow label="Timezone">
+              {location.timezone && `UTC${location.timezone.offset} · ${location.timezone.description}`}
+            </InfoRow>
+          </InfoList>
+        </Panel>
+        <Panel title="Personal" icon="calendar">
+          <InfoList>
+            <InfoRow label="Born">{formatDate(user.dob?.date)}</InfoRow>
+            <InfoRow label="Age">{user.dob?.age && `${user.dob.age} years`}</InfoRow>
+            <InfoRow label="Registered">{formatDate(user.registered?.date)}</InfoRow>
+            <InfoRow label="Member for">{user.registered?.age && `${user.registered.age} years`}</InfoRow>
+          </InfoList>
+        </Panel>
+        <Panel title="Account" icon="lock">
+          <InfoList>
+            <InfoRow label="Username">{login.username}</InfoRow>
+            <InfoRow label="UUID" mono>
+              <span className="break-all">{login.uuid}</span>
+            </InfoRow>
+            <InfoRow label="Nationality">{user.nat}</InfoRow>
+          </InfoList>
+        </Panel>
+      </div>
+    </>
+  );
+}
 
 export default function UserDetailPage() {
   const { id } = useParams();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        setLoading(true);
-        const { data } = await getUserById(id);
-        setUser(data);
-      } catch (err) {
-        setError('Failed to load user details');
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (id) fetchUser();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error || !user) {
-    return (
-      <div className="p-6">
-        <Link href="/users" className="text-blue-500 hover:underline mb-4 inline-block">← Back to Users</Link>
-        <div className="text-red-500">{error || 'User not found'}</div>
-      </div>
-    );
-  }
+  const resource = useResource(getUserById, id);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <Link href="/users" className="text-blue-500 hover:underline mb-6 inline-flex items-center gap-2">
-        <span>←</span> Back to Users
-      </Link>
-      
-      <div className="bg-white rounded-2xl shadow-xl p-8 mt-4">
-        <div className="flex items-start gap-6 mb-8">
-          {user.picture?.large && (
-            <img 
-              src={user.picture.large} 
-              alt={`${user.name.first} ${user.name.last}`}
-              className="w-32 h-32 rounded-full border-4 border-blue-100 shadow-lg"
-            />
-          )}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">
-              {user.name.title} {user.name.first} {user.name.last}
-            </h1>
-            <p className="text-gray-500 capitalize">{user.gender} • {user.nat}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gray-50 rounded-xl p-4">
-            <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              📧 Contact Information
-            </h3>
-            <div className="space-y-2 text-sm">
-              <p><span className="text-gray-500">Email:</span> {user.email}</p>
-              <p><span className="text-gray-500">Phone:</span> {user.phone}</p>
-              <p><span className="text-gray-500">Cell:</span> {user.cell}</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-xl p-4">
-            <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              📍 Location
-            </h3>
-            <div className="space-y-2 text-sm">
-              <p><span className="text-gray-500">Street:</span> {user.location.street.number} {user.location.street.name}</p>
-              <p><span className="text-gray-500">City:</span> {user.location.city}</p>
-              <p><span className="text-gray-500">State:</span> {user.location.state}</p>
-              <p><span className="text-gray-500">Country:</span> {user.location.country}</p>
-              <p><span className="text-gray-500">Postcode:</span> {user.location.postcode}</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-xl p-4">
-            <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              🎂 Personal Details
-            </h3>
-            <div className="space-y-2 text-sm">
-              <p><span className="text-gray-500">Date of Birth:</span> {new Date(user.dob.date).toLocaleDateString()}</p>
-              <p><span className="text-gray-500">Age:</span> {user.dob.age} years</p>
-              <p><span className="text-gray-500">Registered:</span> {new Date(user.registered.date).toLocaleDateString()}</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-xl p-4">
-            <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              🔐 Login Info
-            </h3>
-            <div className="space-y-2 text-sm">
-              <p><span className="text-gray-500">Username:</span> {user.login.username}</p>
-              <p><span className="text-gray-500">UUID:</span> <span className="font-mono text-xs">{user.login.uuid}</span></p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <DetailLayout slug="users" label="All users">
+      <DetailBody resource={resource} noun="user" skeleton={<UserSkeleton />}>
+        {(user) => <UserDetail user={user} />}
+      </DetailBody>
+    </DetailLayout>
   );
 }

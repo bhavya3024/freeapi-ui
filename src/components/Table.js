@@ -1,41 +1,74 @@
-import React from 'react';
+'use client';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { TableSkeletonRows } from './Shimmer';
+import { cardStyles } from './ui';
 
-const Table = ({ title, headers, data, renderRow, totalItems }) => {
+const ALIGN = { left: 'text-left', center: 'text-center', right: 'text-right' };
+
+/**
+ * columns: [{ key, label, align, className, render(item), skeleton }]
+ * `skeleton` picks the placeholder shape while loading (media | avatar | video | badge | lines | text).
+ * The first column's content is wrapped in a real link for keyboard and screen-reader users;
+ * the rest of the row is clickable with the mouse.
+ */
+export default function Table({ columns, items, loading, getKey, getHref, empty, skeletonRows = 12 }) {
+  const router = useRouter();
+
   return (
-    <div className="px-2">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">{title}</h1>
-        <div className="flex items-center space-x-4">
-          <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded w-20"></div>
-          <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            {totalItems !== undefined ? `${totalItems} total items` : `${data.length} items`}
-          </span>
-        </div>
-      </div>
-      
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100" style={{ height: '380px' }}>
-        <div className="h-full overflow-y-auto">
-          <table className="w-full table-fixed">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 sticky top-0 z-10">
+    // Caps at the available height and scrolls both ways inside the card, so the header row can stick
+    <div className={`${cardStyles} flex max-h-full min-h-0 flex-col overflow-hidden`}>
+      <div data-scroll-region className="min-h-0 overflow-auto overscroll-contain">
+        <table className="w-full min-w-[760px] text-sm">
+          <thead>
+            <tr>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  scope="col"
+                  className={`sticky top-0 z-10 h-10 whitespace-nowrap bg-surface-2 px-4 text-xs font-medium text-muted shadow-[inset_0_-1px_0_var(--border)] ${ALIGN[col.align || 'left']} ${col.className || ''}`}
+                >
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line" aria-busy={loading || undefined}>
+            {loading ? (
+              <TableSkeletonRows columns={columns} rows={skeletonRows} />
+            ) : items.length === 0 ? (
               <tr>
-                {headers.map((header, index) => (
-                  <th 
-                    key={index} 
-                    className={`py-3 px-3 font-semibold text-gray-700 uppercase text-xs tracking-wider ${header.align === 'center' ? 'text-center' : 'text-left'}`}
-                  >
-                    {header.label}
-                  </th>
-                ))}
+                <td colSpan={columns.length}>{empty}</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {data.map((item, index) => renderRow(item, index))}
-            </tbody>
-          </table>
-        </div>
+            ) : (
+              items.map((item) => {
+                const href = getHref(item);
+                return (
+                  <tr
+                    key={getKey(item)}
+                    onClick={(e) => {
+                      if (!e.target.closest('a, button')) router.push(href);
+                    }}
+                    className="animate-fade-in cursor-pointer transition-colors hover:bg-surface-2/60"
+                  >
+                    {columns.map((col, i) => (
+                      <td key={col.key} className={`px-4 py-3 align-middle ${ALIGN[col.align || 'left']}`}>
+                        {i === 0 ? (
+                          <Link href={href} className="block rounded">
+                            {col.render(item)}
+                          </Link>
+                        ) : (
+                          col.render(item)
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
-};
-
-export default Table;
+}

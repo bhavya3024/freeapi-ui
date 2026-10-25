@@ -1,106 +1,75 @@
 'use client';
 import { getDogs } from "../../src/apis/dogs";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Table from "../../src/components/Table";
-import Pagination from "../../src/components/Pagination";
+import Collection from "../../src/components/Collection";
+import { MediaCard } from "../../src/components/Cards";
+import ShimmerImage from "../../src/components/ShimmerImage";
+import { Badge } from "../../src/components/ui";
+
+const columns = [
+  {
+    key: 'breed',
+    label: 'Breed',
+    skeleton: 'media',
+    render: (dog) => (
+      <div className="flex items-center gap-3">
+        <ShimmerImage src={dog.image?.url} alt="" fallbackIcon="dog" className="h-10 w-10 shrink-0 rounded-lg" />
+        <div className="min-w-0">
+          <p className="truncate font-medium text-fg">{dog.name || 'Unknown breed'}</p>
+          <p className="max-w-56 truncate text-xs text-subtle">{dog.bred_for || dog.origin || '—'}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: 'group',
+    label: 'Group',
+    skeleton: 'badge',
+    render: (dog) => (dog.breed_group ? <Badge tone="orange">{dog.breed_group}</Badge> : <span className="text-subtle">—</span>),
+  },
+  {
+    key: 'temperament',
+    label: 'Temperament',
+    render: (dog) => <span className="block max-w-72 truncate text-muted">{dog.temperament || '—'}</span>,
+  },
+  {
+    key: 'life',
+    label: 'Life span',
+    align: 'right',
+    render: (dog) => <span className="whitespace-nowrap tabular-nums text-muted">{dog.life_span || '—'}</span>,
+  },
+  {
+    key: 'weight',
+    label: 'Weight',
+    align: 'right',
+    render: (dog) => <span className="whitespace-nowrap tabular-nums text-muted">{dog.weight?.metric ? `${dog.weight.metric} kg` : '—'}</span>,
+  },
+];
+
+const renderCard = (dog) => (
+  <MediaCard
+    image={dog.image?.url}
+    alt={dog.name}
+    fallbackIcon="dog"
+    title={dog.name || 'Unknown breed'}
+    subtitle={dog.temperament || dog.bred_for || '—'}
+    meta={
+      <>
+        {dog.breed_group ? <Badge tone="orange">{dog.breed_group}</Badge> : <Badge>Mixed</Badge>}
+        {dog.life_span && <span className="truncate text-xs tabular-nums text-subtle">{dog.life_span}</span>}
+      </>
+    }
+  />
+);
 
 export default function DogsPage() {
-  const [page, setPage] = useState(1);
-  const [dogs, setDogs] = useState([]);
-  const [nextPage, setNextPage] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const router = useRouter();
-  
-  useEffect(() => {
-    const fetchDogs = async () => {
-      const { data: { data: dogs, nextPage, totalItems, totalPages } } = await getDogs({
-        page,
-        limit: 5,
-      });
-      console.log('DOGS --->>>', JSON.stringify(dogs));
-      setDogs(dogs || []);
-      setNextPage(nextPage);
-      setTotalItems(totalItems);
-      setTotalPages(totalPages);
-    }
-    fetchDogs();
-  }, [page]);
-
-  const headers = [
-    { label: 'Image', align: 'left' },
-    { label: 'Name', align: 'left' },
-    { label: 'Breed Group', align: 'left' },
-    { label: 'Temperament', align: 'left' },
-    { label: 'Life Span', align: 'left' },
-    { label: 'Weight', align: 'left' },
-    { label: 'Height', align: 'left' }
-  ];
-
-  const renderDogRow = (dog) => (
-    <tr key={dog.id} onClick={() => router.push(`/dogs/${dog.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
-      <td className="py-2 px-4 text-left">
-        <img 
-          src={dog.image?.url || 'N/A'} 
-          alt={dog.name || 'Dog'} 
-          className="w-10 h-10 rounded-full object-cover"
-          onError={(e) => {
-            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxNkM4IDcgOCAzMyAyMCAyNFMyMCA3IDIwIDE2WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
-          }}
-        />
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm font-medium">{dog.name || 'N/A'}</span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm">{dog.breed_group || 'N/A'}</span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs text-gray-600">
-          {dog.temperament && dog.temperament.length > 25 
-            ? `${dog.temperament.substring(0, 25)}...` 
-            : dog.temperament || 'N/A'
-          }
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm">{dog.life_span || 'N/A'}</span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs text-gray-600">
-          {dog.weight?.metric || 'N/A'} kg
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs text-gray-600">
-          {dog.height?.metric || 'N/A'} cm
-        </span>
-      </td>
-    </tr>
-  );
-
-  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => p + 1);
-  const handlePageChange = (newPage) => setPage(newPage);
-
   return (
-    <div>
-      <Table
-        title="Dogs"
-        headers={headers}
-        data={dogs}
-        renderRow={renderDogRow}
-        totalItems={totalItems}
-      />
-      <Pagination
-        page={page}
-        nextPage={nextPage}
-        totalPages={totalPages}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onPageChange={handlePageChange}
-      />
-    </div>
+    <Collection
+      slug="dogs"
+      fetchPage={getDogs}
+      getKey={(dog) => dog.id}
+      getHref={(dog) => `/dogs/${dog.id}`}
+      renderCard={renderCard}
+      columns={columns}
+    />
   );
 }

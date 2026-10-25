@@ -1,108 +1,74 @@
 'use client';
 import { getUsers } from "../../src/apis/users";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Table from "../../src/components/Table";
-import Pagination from "../../src/components/Pagination";
+import Collection from "../../src/components/Collection";
+import { ProfileCard } from "../../src/components/Cards";
+import ShimmerImage from "../../src/components/ShimmerImage";
+import { Badge } from "../../src/components/ui";
+
+const fullName = (user) => `${user.name?.first ?? ''} ${user.name?.last ?? ''}`.trim() || 'Unknown user';
+
+const columns = [
+  {
+    key: 'user',
+    label: 'User',
+    skeleton: 'avatar',
+    render: (user) => (
+      <div className="flex items-center gap-3">
+        <ShimmerImage src={user.picture?.thumbnail} fallbackIcon="users" className="h-10 w-10 shrink-0 rounded-full" />
+        <div className="min-w-0">
+          <p className="max-w-56 truncate font-medium text-fg">{fullName(user)}</p>
+          <p className="max-w-56 truncate text-xs text-subtle">@{user.login?.username}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: 'email',
+    label: 'Email',
+    render: (user) => <span className="block max-w-64 truncate text-muted">{user.email}</span>,
+  },
+  {
+    key: 'phone',
+    label: 'Phone',
+    render: (user) => <span className="whitespace-nowrap font-mono text-[13px] text-muted">{user.phone}</span>,
+  },
+  {
+    key: 'country',
+    label: 'Country',
+    skeleton: 'badge',
+    render: (user) => <Badge icon="pin">{user.location?.country ?? 'Unknown'}</Badge>,
+  },
+  {
+    key: 'age',
+    label: 'Age',
+    align: 'right',
+    render: (user) => <span className="tabular-nums text-muted">{user.dob?.age ?? '—'}</span>,
+  },
+];
+
+const renderCard = (user) => (
+  <ProfileCard
+    image={user.picture?.large}
+    title={fullName(user)}
+    subtitle={user.email}
+    meta={
+      <>
+        {user.location?.country && <Badge icon="pin">{user.location.country}</Badge>}
+        {user.dob?.age && <Badge>{user.dob.age} yrs</Badge>}
+      </>
+    }
+  />
+);
 
 export default function UsersPage() {
-  // Fetch data from the API
-
-  const [page, setPage] = useState(1);
-  const [users, setUsers] = useState([]);
-  const [nextPage, setNextPage] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const router = useRouter();
-  
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const { data } = await getUsers({
-        page,
-        results: 5,
-      });
-      const { data: users, nextPage, totalItems, totalPages } = data;
-      setUsers(users || []);
-      setNextPage(nextPage);
-      setTotalItems(totalItems);
-      setTotalPages(totalPages);
-    }
-    fetchUsers();
-  }, [page]);
-
-  const headers = [
-    { label: 'ID', align: 'left' },
-    { label: 'User Details', align: 'left' },
-    { label: 'Email', align: 'left' },
-    { label: 'Phone', align: 'left' },
-    { label: 'Location', align: 'left' }
-  ];
-
-  const renderUserRow = (user) => (
-    <tr key={user.id} onClick={() => router.push(`/users/${user.id}`)} className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200 cursor-pointer" style={{ height: '55px' }}>
-      <td className="py-3 px-3 text-left">
-        <span className="inline-flex items-center justify-center w-7 h-7 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold rounded-lg">
-          {user.id}
-        </span>
-      </td>
-      <td className="py-3 px-3 text-left">
-        <div className="flex items-center space-x-2">
-          {user.picture && user.picture.thumbnail && (
-            <img 
-              src={user.picture.thumbnail} 
-              alt={`${user.name.first} ${user.name.last}`} 
-              className="w-8 h-8 rounded-full border border-white shadow-sm ring-1 ring-blue-100 group-hover:ring-blue-200 transition-all flex-shrink-0"
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="font-medium text-gray-800 group-hover:text-gray-900 text-sm truncate">
-              {`${user.name.first} ${user.name.last}`}
-            </div>
-            <div className="text-xs text-gray-500 capitalize">{user.gender}</div>
-          </div>
-        </div>
-      </td>
-      <td className="py-3 px-3 text-left">
-        <div className="flex items-center space-x-1">
-          <span className="text-blue-600 text-sm">📧</span>
-          <span className="text-xs text-gray-700 truncate">{user.email}</span>
-        </div>
-      </td>
-      <td className="py-3 px-3 text-left">
-        <div className="flex items-center space-x-1">
-          <span className="text-green-600 text-sm">📞</span>
-          <span className="text-xs text-gray-700 font-mono">{user.phone}</span>
-        </div>
-      </td>
-      <td className="py-3 px-3 text-left">
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-          🌍 {user.location.country}
-        </span>
-      </td>
-    </tr>
-  );
-
-  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => p + 1);
-  const handlePageChange = (newPage) => setPage(newPage);
-
   return (
-    <div>
-      <Table
-        title="Users"
-        headers={headers}
-        data={users}
-        renderRow={renderUserRow}
-        totalItems={totalItems}
-      />
-      <Pagination
-        page={page}
-        nextPage={nextPage}
-        totalPages={totalPages}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onPageChange={handlePageChange}
-      />
-    </div>
+    <Collection
+      slug="users"
+      fetchPage={getUsers}
+      getKey={(user) => user.id}
+      getHref={(user) => `/users/${user.id}`}
+      renderCard={renderCard}
+      columns={columns}
+    />
   );
 }

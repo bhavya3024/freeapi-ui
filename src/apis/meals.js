@@ -17,3 +17,8 @@ export const getMealById = async (id) => {
     const { data } = await axios.get(`/api/meals/${id}`);
     return data;
 };
+
+export const getRandomMeal = async () => {
+    const { data: { data } } = await axios.get('/api/meals/random');
+    return data;
+};

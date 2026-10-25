@@ -1,149 +1,139 @@
 'use client';
-import { getVideoById } from "../../../src/apis/videos";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
+import { getVideoById } from "../../../src/apis/videos";
+import { DetailBody, DetailLayout, Panel, panelStyles } from "../../../src/components/Detail";
+import Icon from "../../../src/components/Icon";
+import ShimmerImage from "../../../src/components/ShimmerImage";
+import { Chip, buttonStyles } from "../../../src/components/ui";
+import { useResource } from "../../../src/hooks/useFetch";
+import { formatCompact, formatDate, formatDuration } from "../../../src/lib/format";
+import VideoSkeleton from "./skeleton";
+
+// Shimmer until the YouTube iframe has loaded
+function Player({ id, title }) {
+  const [ready, setReady] = useState(false);
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-line bg-black">
+      {!ready && <div className="shimmer absolute inset-0" />}
+      <iframe
+        src={`https://www.youtube.com/embed/${id}`}
+        title={title || 'YouTube video player'}
+        onLoad={() => setReady(true)}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </div>
+  );
+}
+
+function Stat({ icon, children }) {
+  return (
+    <span className="inline-flex h-5 items-center gap-1.5">
+      <Icon name={icon} className="w-4 h-4 text-subtle" />
+      {children}
+    </span>
+  );
+}
+
+function Description({ text }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 400 || text.split('\n').length > 6;
+  return (
+    <Panel
+      title="Description"
+      icon="comment"
+      action={
+        isLong && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="cursor-pointer text-xs font-medium text-accent-text hover:underline"
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        )
+      }
+    >
+      <p className={`whitespace-pre-line break-words text-sm leading-6 text-muted ${isLong && !expanded ? 'line-clamp-6' : ''}`}>
+        {text}
+      </p>
+    </Panel>
+  );
+}
+
+function VideoDetail({ id, data }) {
+  // The video resource is nested under `items`, same as in the list response
+  const video = data.video?.items || data.video || {};
+  const { snippet = {}, statistics = {}, contentDetails = {} } = video;
+  const channel = data.channel?.info || {};
+  const subscribers = data.channel?.statistics?.subscriberCount;
+  const duration = formatDuration(contentDetails.duration);
+
+  return (
+    <>
+      <Player id={id} title={snippet.title} />
+
+      <div className="animate-fade-in">
+        <h1 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">{snippet.title || 'Untitled video'}</h1>
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm tabular-nums text-muted">
+          <Stat icon="eye">{formatCompact(statistics.viewCount)} views</Stat>
+          <Stat icon="thumbsUp">{formatCompact(statistics.likeCount)} likes</Stat>
+          <Stat icon="comment">{formatCompact(statistics.commentCount)} comments</Stat>
+          {snippet.publishedAt && <Stat icon="calendar">{formatDate(snippet.publishedAt)}</Stat>}
+          {duration && <Stat icon="clock">{duration}</Stat>}
+        </div>
+      </div>
+
+      <div className={`${panelStyles} flex items-center gap-3 p-4 animate-fade-in`}>
+        <ShimmerImage
+          src={channel.thumbnails?.default?.url}
+          alt=""
+          fallbackIcon="video"
+          className="h-11 w-11 shrink-0 rounded-full"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-fg">{channel.title || snippet.channelTitle || 'YouTube channel'}</p>
+          <p className="truncate text-xs text-subtle">
+            {[channel.customUrl, subscribers && `${formatCompact(subscribers)} subscribers`].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <a
+          href={`https://www.youtube.com/watch?v=${id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonStyles({ variant: 'primary' })}
+        >
+          <span>
+            <span className="hidden sm:inline">Watch on </span>YouTube
+          </span>
+          <Icon name="external" />
+        </a>
+      </div>
+
+      {snippet.description && <Description text={snippet.description} />}
+
+      {snippet.tags?.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 animate-fade-in">
+          {snippet.tags.slice(0, 20).map((tag, i) => (
+            <Chip key={`${i}-${tag}`}>#{tag}</Chip>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function VideoDetailPage() {
   const { id } = useParams();
-  const [video, setVideo] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchVideo = async () => {
-      try {
-        setLoading(true);
-        const { data } = await getVideoById(id);
-        setVideo(data);
-      } catch (err) {
-        setError('Failed to load video details');
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (id) fetchVideo();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-      </div>
-    );
-  }
-
-  if (error || !video) {
-    return (
-      <div className="p-6">
-        <Link href="/videos" className="text-blue-500 hover:underline mb-4 inline-block">← Back to Videos</Link>
-        <div className="text-red-500">{error || 'Video not found'}</div>
-      </div>
-    );
-  }
-
-  const videoInfo = video.video || {};
-  const channelInfo = video.channel?.info || {};
-  const stats = videoInfo.statistics || {};
-  const snippet = videoInfo.snippet || {};
-
-  const formatNumber = (num) => {
-    if (!num) return '0';
-    const n = parseInt(num);
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-    return n.toString();
-  };
+  const resource = useResource(getVideoById, id);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <Link href="/videos" className="text-blue-500 hover:underline mb-6 inline-flex items-center gap-2">
-        <span>←</span> Back to Videos
-      </Link>
-      
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden mt-4">
-        {/* Video Embed */}
-        <div className="aspect-video bg-black">
-          <iframe
-            src={`https://www.youtube.com/embed/${id}`}
-            title={snippet.title}
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-3">{snippet.title}</h1>
-          
-          <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-gray-600">
-            <span className="flex items-center gap-1">
-              👁️ {formatNumber(stats.viewCount)} views
-            </span>
-            <span className="flex items-center gap-1">
-              👍 {formatNumber(stats.likeCount)} likes
-            </span>
-            <span className="flex items-center gap-1">
-              💬 {formatNumber(stats.commentCount)} comments
-            </span>
-            <span className="flex items-center gap-1">
-              📅 {snippet.publishedAt ? new Date(snippet.publishedAt).toLocaleDateString() : 'N/A'}
-            </span>
-          </div>
-
-          {/* Channel Info */}
-          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl mb-6">
-            {channelInfo.thumbnails?.default?.url && (
-              <img 
-                src={channelInfo.thumbnails.default.url}
-                alt={channelInfo.title}
-                className="w-12 h-12 rounded-full"
-              />
-            )}
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-800">{channelInfo.title}</h3>
-              {channelInfo.customUrl && (
-                <p className="text-sm text-gray-500">{channelInfo.customUrl}</p>
-              )}
-            </div>
-            <a 
-              href={`https://www.youtube.com/watch?v=${id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-            >
-              Watch on YouTube
-            </a>
-          </div>
-
-          {/* Description */}
-          {snippet.description && (
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h3 className="font-semibold text-gray-700 mb-3">Description</h3>
-              <p className="text-sm text-gray-600 whitespace-pre-line max-h-48 overflow-y-auto">
-                {snippet.description}
-              </p>
-            </div>
-          )}
-
-          {/* Tags */}
-          {snippet.tags && snippet.tags.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-semibold text-gray-700 mb-2">Tags</h3>
-              <div className="flex flex-wrap gap-2">
-                {snippet.tags.slice(0, 15).map((tag, i) => (
-                  <span key={i} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                    #{tag}
-                  </span>
-                ))}
-                {snippet.tags.length > 15 && (
-                  <span className="text-gray-500 text-xs">+{snippet.tags.length - 15} more</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <DetailLayout slug="videos" label="All videos">
+      <DetailBody resource={resource} noun="video" skeleton={<VideoSkeleton />}>
+        {(data) => <VideoDetail id={id} data={data} />}
+      </DetailBody>
+    </DetailLayout>
   );
 }

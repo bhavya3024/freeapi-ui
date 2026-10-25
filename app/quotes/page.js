@@ -1,86 +1,55 @@
 'use client';
 import { getQuotes } from "../../src/apis/quotes";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Table from "../../src/components/Table";
-import Pagination from "../../src/components/Pagination";
+import Collection from "../../src/components/Collection";
+import { TextCard } from "../../src/components/Cards";
+import Icon from "../../src/components/Icon";
+import { Badge } from "../../src/components/ui";
+
+const columns = [
+  {
+    key: 'quote',
+    label: 'Quote',
+    skeleton: 'lines',
+    render: (q) => <p className="line-clamp-2 max-w-2xl text-fg">“{q.content}”</p>,
+  },
+  { key: 'author', label: 'Author', render: (q) => <span className="whitespace-nowrap font-medium text-muted">{q.author || 'Anonymous'}</span> },
+  {
+    key: 'tag',
+    label: 'Tag',
+    skeleton: 'badge',
+    render: (q) => (q.tags?.[0] ? <Badge tone="indigo">{q.tags[0]}</Badge> : <span className="text-subtle">—</span>),
+  },
+  {
+    key: 'length',
+    label: 'Length',
+    align: 'right',
+    render: (q) => <span className="tabular-nums text-muted">{q.length ?? q.content?.length ?? '—'}</span>,
+  },
+];
+
+const renderCard = (q) => (
+  <TextCard
+    eyebrow={<Icon name="quote" className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />}
+    footer={
+      <>
+        <span className="truncate text-sm font-medium text-muted">— {q.author || 'Anonymous'}</span>
+        {q.tags?.[0] && <Badge tone="indigo">{q.tags[0]}</Badge>}
+      </>
+    }
+  >
+    <p className="line-clamp-4">{q.content}</p>
+  </TextCard>
+);
 
 export default function QuotesPage() {
-  const [page, setPage] = useState(1);
-  const [quotes, setQuotes] = useState([]);
-  const [nextPage, setNextPage] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const router = useRouter();
-  
-  useEffect(() => {
-    const fetchQuotes = async () => {
-      const { data: { data: quotes, nextPage, totalItems, totalPages } } = await getQuotes({
-        page,
-        limit: 5,
-      });
-      setQuotes(quotes || []);
-      setNextPage(nextPage);
-      setTotalItems(totalItems);
-      setTotalPages(totalPages);
-    }
-    fetchQuotes();
-  }, [page]);
-
-  const headers = [
-    { label: 'Author', align: 'left' },
-    { label: 'Content', align: 'left' },
-    { label: 'Length', align: 'left' },
-    { label: 'Date Added', align: 'left' }
-  ];
-
-  const renderQuoteRow = (quote) => (
-    <tr key={quote.id} onClick={() => router.push(`/quotes/${quote.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm font-medium text-blue-600">{quote.author || 'N/A'}</span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-sm text-gray-700">
-          {quote.content && quote.content.length > 100 
-            ? `${quote.content.substring(0, 100)}...` 
-            : quote.content || 'N/A'
-          }
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
-          {quote.length || 'N/A'}
-        </span>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <span className="text-xs text-gray-500">
-          {quote.dateAdded ? new Date(quote.dateAdded).toLocaleDateString() : 'N/A'}
-        </span>
-      </td>
-    </tr>
-  );
-
-  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => p + 1);
-  const handlePageChange = (newPage) => setPage(newPage);
-
   return (
-    <div>
-      <Table
-        title="Quotes"
-        headers={headers}
-        data={quotes}
-        renderRow={renderQuoteRow}
-        totalItems={totalItems}
-      />
-      <Pagination
-        page={page}
-        nextPage={nextPage}
-        totalPages={totalPages}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onPageChange={handlePageChange}
-      />
-    </div>
+    <Collection
+      slug="quotes"
+      fetchPage={getQuotes}
+      getKey={(q) => q.id}
+      getHref={(q) => `/quotes/${q.id}`}
+      renderCard={renderCard}
+      columns={columns}
+    />
   );
 }

@@ -1,183 +1,247 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../src/context/AuthContext';
 import { getChats, getAvailableUsers, getOrCreateChat } from '../../src/apis/chat';
+import Icon from '../../src/components/Icon';
+import { Line, Shimmer } from '../../src/components/Shimmer';
+import { Avatar, EmptyState, ErrorState, Spinner, buttonStyles, inputStyles } from '../../src/components/ui';
+import { formatChatTime } from '../../src/lib/format';
+import { ChatAvatar, ChatListFrame, ChatRowsSkeleton, chatTitle } from './shared';
+
+function NewChatDialog({ onClose }) {
+  const router = useRouter();
+  const [state, setState] = useState({ status: 'loading', users: [] });
+  const [query, setQuery] = useState('');
+  const [startingId, setStartingId] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    getAvailableUsers().then(
+      ({ data }) => !cancelled && setState({ status: 'ready', users: data || [] }),
+      () => !cancelled && setState({ status: 'error', users: [] }),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const startChat = async (userId) => {
+    setStartingId(userId);
+    setError('');
+    try {
+      const { data } = await getOrCreateChat(userId);
+      router.push(`/chat/${data._id}`);
+    } catch {
+      setError('Couldn’t start that conversation. Try again.');
+      setStartingId(null);
+    }
+  };
+
+  const q = query.trim().toLowerCase();
+  const users = q
+    ? state.users.filter((u) => u.username?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q))
+    : state.users;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[12vh] backdrop-blur-[2px]"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-chat-title"
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[70vh] w-full max-w-md animate-fade-in flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl"
+      >
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-line pl-5 pr-2">
+          <h2 id="new-chat-title" className="text-sm font-semibold text-fg">
+            New conversation
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className={buttonStyles({ variant: 'ghost', size: 'icon' })}
+            aria-label="Close"
+          >
+            <Icon name="x" />
+          </button>
+        </header>
+        <div className="shrink-0 border-b border-line p-3">
+          <div className="relative">
+            <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-subtle" />
+            <input
+              type="search"
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search people"
+              aria-label="Search people"
+              className={`${inputStyles} h-9 w-full pl-9 pr-3`}
+            />
+          </div>
+          {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
+        </div>
+        <div className="flex-1 overflow-y-auto p-2" aria-busy={state.status === 'loading' || undefined}>
+          {state.status === 'loading' ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                <Shimmer className="h-10 w-10 shrink-0 rounded-full" />
+                <div className="min-w-0 flex-1">
+                  <Line className="w-28" />
+                  <Line size="xs" className="w-44" />
+                </div>
+              </div>
+            ))
+          ) : state.status === 'error' ? (
+            <p className="px-3 py-8 text-center text-sm text-subtle">Couldn’t load people. Close and try again.</p>
+          ) : users.length === 0 ? (
+            <p className="px-3 py-8 text-center text-sm text-subtle">
+              {q ? `No one matches “${query.trim()}”.` : 'No other registered users yet.'}
+            </p>
+          ) : (
+            users.map((u) => (
+              <button
+                key={u._id}
+                type="button"
+                onClick={() => startChat(u._id)}
+                disabled={startingId !== null}
+                className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-2 disabled:cursor-default"
+              >
+                <Avatar name={u.username} size="md" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-fg">{u.username}</p>
+                  <p className="truncate text-xs text-subtle">{u.email}</p>
+                </div>
+                {startingId === u._id ? (
+                  <Spinner className="w-4 h-4 text-accent-text" />
+                ) : (
+                  <Icon name="chevronRight" className="w-4 h-4 text-subtle" />
+                )}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ChatPage() {
-    const [chats, setChats] = useState([]);
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showUsers, setShowUsers] = useState(false);
-    const [error, setError] = useState('');
-    const router = useRouter();
-    const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const [state, setState] = useState({ status: 'loading', chats: [] });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const closeDialog = useCallback(() => setDialogOpen(false), []);
 
-    useEffect(() => {
-        if (!authLoading && !isAuthenticated) {
-            router.push('/login');
-        }
-    }, [authLoading, isAuthenticated, router]);
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) router.replace('/login');
+  }, [authLoading, isAuthenticated, router]);
 
-    useEffect(() => {
-        if (isAuthenticated) {
-            fetchChats();
-        }
-    }, [isAuthenticated]);
-
-    const fetchChats = async () => {
-        try {
-            setLoading(true);
-            const { data } = await getChats();
-            setChats(data || []);
-        } catch (err) {
-            setError('Failed to load chats');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchUsers = async () => {
-        try {
-            const { data } = await getAvailableUsers();
-            setUsers(data || []);
-            setShowUsers(true);
-        } catch (err) {
-            console.error('Failed to fetch users:', err);
-        }
-    };
-
-    const startChat = async (userId) => {
-        try {
-            const { data } = await getOrCreateChat(userId);
-            router.push(`/chat/${data._id}`);
-        } catch (err) {
-            console.error('Failed to start chat:', err);
-        }
-    };
-
-    if (authLoading || loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            </div>
-        );
-    }
-
-    if (!isAuthenticated) {
-        return null;
-    }
-
-    return (
-        <div className="p-6 max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800">💬 Chats</h1>
-                    <p className="text-gray-500">Welcome, {user?.username || 'User'}</p>
-                </div>
-                <button
-                    onClick={fetchUsers}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-4 py-2 rounded-xl font-medium transition-all"
-                >
-                    + New Chat
-                </button>
-            </div>
-
-            {error && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm">
-                    {error}
-                </div>
-            )}
-
-            {/* User selection modal */}
-            {showUsers && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowUsers(false)}>
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 max-h-96 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold mb-4">Start a new chat</h3>
-                        {users.length === 0 ? (
-                            <p className="text-gray-500">No users available</p>
-                        ) : (
-                            <div className="space-y-2">
-                                {users.map((u) => (
-                                    <button
-                                        key={u._id}
-                                        onClick={() => startChat(u._id)}
-                                        className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-xl transition-colors"
-                                    >
-                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-bold">
-                                            {u.username?.charAt(0).toUpperCase() || '?'}
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="font-medium">{u.username}</p>
-                                            <p className="text-sm text-gray-500">{u.email}</p>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        <button
-                            onClick={() => setShowUsers(false)}
-                            className="mt-4 w-full py-2 text-gray-600 hover:text-gray-800"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Chat list */}
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                {chats.length === 0 ? (
-                    <div className="p-8 text-center">
-                        <span className="text-6xl mb-4 block">💭</span>
-                        <h3 className="text-xl font-medium text-gray-700 mb-2">No chats yet</h3>
-                        <p className="text-gray-500 mb-4">Start a conversation with someone!</p>
-                        <button
-                            onClick={fetchUsers}
-                            className="text-blue-500 hover:text-blue-600 font-medium"
-                        >
-                            Find users to chat with →
-                        </button>
-                    </div>
-                ) : (
-                    <div className="divide-y divide-gray-100">
-                        {chats.map((chat) => {
-                            const otherParticipant = chat.participants?.find(p => p._id !== user?._id);
-                            const chatName = chat.isGroupChat ? chat.name : otherParticipant?.username;
-                            const lastMessage = chat.lastMessage;
-                            
-                            return (
-                                <Link
-                                    key={chat._id}
-                                    href={`/chat/${chat._id}`}
-                                    className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors"
-                                >
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${chat.isGroupChat ? 'bg-gradient-to-br from-green-400 to-blue-400' : 'bg-gradient-to-br from-blue-400 to-purple-400'}`}>
-                                        {chat.isGroupChat ? '👥' : chatName?.charAt(0).toUpperCase() || '?'}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="font-medium text-gray-800 truncate">
-                                                {chatName || 'Unknown'}
-                                            </h3>
-                                            {lastMessage?.createdAt && (
-                                                <span className="text-xs text-gray-400">
-                                                    {new Date(lastMessage.createdAt).toLocaleDateString()}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-gray-500 truncate">
-                                            {lastMessage?.content || 'No messages yet'}
-                                        </p>
-                                    </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-        </div>
+  const loadChats = useCallback(() => {
+    setState((s) => ({ ...s, status: 'loading' }));
+    getChats().then(
+      ({ data }) => setState({ status: 'ready', chats: data || [] }),
+      () => setState({ status: 'error', chats: [] }),
     );
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) loadChats();
+  }, [isAuthenticated, loadChats]);
+
+  const newChatButton = (
+    <button
+      type="button"
+      onClick={() => setDialogOpen(true)}
+      disabled={!isAuthenticated}
+      className={buttonStyles({ variant: 'primary' })}
+    >
+      <Icon name="plus" />
+      <span className="hidden sm:inline">New conversation</span>
+    </button>
+  );
+
+  let body;
+  if (authLoading || !isAuthenticated || state.status === 'loading') {
+    body = <ChatRowsSkeleton />;
+  } else if (state.status === 'error') {
+    body = (
+      <div className="p-2">
+        <ErrorState
+          title="Couldn’t load your conversations"
+          description="The chat service didn’t respond. Your session may have expired."
+          onRetry={loadChats}
+        />
+      </div>
+    );
+  } else if (state.chats.length === 0) {
+    body = (
+      <EmptyState
+        icon="chat"
+        title="No conversations yet"
+        description="Start a one-to-one chat with any registered user."
+        action={
+          <button type="button" onClick={() => setDialogOpen(true)} className={buttonStyles()}>
+            <Icon name="plus" />
+            Find someone to message
+          </button>
+        }
+      />
+    );
+  } else {
+    body = (
+      <ul className="divide-y divide-line">
+        {state.chats.map((chat) => {
+          const name = chatTitle(chat, user?._id);
+          const last = chat.lastMessage;
+          return (
+            <li key={chat._id} className="animate-fade-in">
+              <Link href={`/chat/${chat._id}`} className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-surface-2/60">
+                <ChatAvatar chat={chat} name={name} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-sm font-semibold text-fg">{name}</p>
+                    <span className="shrink-0 text-xs tabular-nums text-subtle">{formatChatTime(last?.createdAt)}</span>
+                  </div>
+                  <p className="truncate text-sm text-muted">
+                    {last?.content || <span className="text-subtle">No messages yet</span>}
+                  </p>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  return (
+    <>
+      <ChatListFrame
+        subtitle={
+          user ? (
+            <span>
+              Signed in as <span className="font-medium text-fg">{user.username}</span>
+            </span>
+          ) : (
+            <Shimmer className="h-3 w-40" />
+          )
+        }
+        action={newChatButton}
+      >
+        {body}
+      </ChatListFrame>
+      {dialogOpen && <NewChatDialog onClose={closeDialog} />}
+    </>
+  );
 }

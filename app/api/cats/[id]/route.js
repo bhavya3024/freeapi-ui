@@ -1,25 +1,3 @@
-import { NextResponse } from 'next/server';
+import { createGetByIdHandler } from '../../_lib/proxy';
 
-const BASE_URL = 'https://api.freeapi.app/api/v1/public/cats';
-
-export async function GET(request, { params }) {
-    try {
-        const { id } = params;
-        
-        const response = await fetch(`${BASE_URL}/${id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        
-        const data = await response.json();
-        
-        return NextResponse.json(data, { status: response.status });
-    } catch (error) {
-        return NextResponse.json(
-            { message: 'Internal server error', error: error.message },
-            { status: 500 }
-        );
-    }
-}
+export const GET = createGetByIdHandler('/public/cats');

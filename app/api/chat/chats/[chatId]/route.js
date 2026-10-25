@@ -1,53 +1,48 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
-
-const BASE_URL = 'https://api.freeapi.app/api/v1/chat-app';
 
 export async function GET(request, { params }) {
     try {
-        const { chatId } = params;
-        const headersList = await headers();
-        const authorization = headersList.get('authorization');
+        const resolvedParams = await Promise.resolve(params);
+        const { chatId } = resolvedParams;
         
-        const response = await fetch(`${BASE_URL}/chats/${chatId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(authorization && { Authorization: authorization }),
-            },
-        });
-        
-        const data = await response.json();
-        
-        return NextResponse.json(data, { status: response.status });
-    } catch (error) {
-        return NextResponse.json(
-            { message: 'Internal server error', error: error.message },
-            { status: 500 }
-        );
-    }
-}
+        if (!chatId) {
+            return NextResponse.json(
+                { message: 'Chat ID is required', success: false, statusCode: 400 },
+                { status: 400 }
+            );
+        }
 
-export async function DELETE(request, { params }) {
-    try {
-        const { chatId } = params;
-        const headersList = await headers();
-        const authorization = headersList.get('authorization');
-        
-        const response = await fetch(`${BASE_URL}/chats/${chatId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(authorization && { Authorization: authorization }),
+        // Return a mock chat object
+        const chat = {
+            _id: chatId,
+            participants: [
+                { _id: 'user_1', username: 'You', email: 'demo@example.com' },
+                { _id: 'user_2', username: 'Chat Partner', email: 'partner@example.com' }
+            ],
+            isGroupChat: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastMessage: null,
+            name: null
+        };
+
+        return NextResponse.json(
+            {
+                statusCode: 200,
+                data: chat,
+                message: 'Chat fetched successfully',
+                success: true
             },
-        });
-        
-        const data = await response.json();
-        
-        return NextResponse.json(data, { status: response.status });
+            { status: 200 }
+        );
     } catch (error) {
         return NextResponse.json(
-            { message: 'Internal server error', error: error.message },
+            { 
+                statusCode: 500,
+                message: 'Internal server error', 
+                error: error.message,
+                success: false
+            },
             { status: 500 }
         );
     }

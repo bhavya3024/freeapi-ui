@@ -17,3 +17,8 @@ export const getQuoteById = async (id) => {
     const { data } = await axios.get(`/api/quotes/${id}`);
     return data;
 };
+
+export const getRandomQuote = async () => {
+    const { data: { data } } = await axios.get('/api/quotes/random');
+    return data;
+};

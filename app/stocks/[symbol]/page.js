@@ -1,154 +1,100 @@
 'use client';
-import { getStockBySymbol } from "../../../src/apis/stocks";
-import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
+import { getStockBySymbol } from "../../../src/apis/stocks";
+import { DetailBody, DetailLayout, HeroTitle, StatTile, heroStyles } from "../../../src/components/Detail";
+import { Badge } from "../../../src/components/ui";
+import { useResource } from "../../../src/hooks/useFetch";
+import { signTone } from "../../../src/lib/format";
+import StockSkeleton from "./skeleton";
+
+// "₹ 1,234.5 Cr." -> 1234.5
+const toNumber = (value) => {
+  const n = Number.parseFloat(String(value ?? '').replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+};
+
+function RangeBar({ stock }) {
+  const [high, low] = String(stock.HighLow || '').split('/').map(toNumber);
+  const price = toNumber(stock.CurrentPrice);
+  if (high === null || low === null || price === null || high <= low) return null;
+  const position = Math.min(100, Math.max(0, ((price - low) / (high - low)) * 100));
+
+  return (
+    <div className="mt-6 border-t border-line pt-5">
+      <div className="flex justify-between text-xs text-muted">
+        <span>
+          52w low <span className="font-medium tabular-nums text-fg">{low}</span>
+        </span>
+        <span>
+          52w high <span className="font-medium tabular-nums text-fg">{high}</span>
+        </span>
+      </div>
+      <div className="relative mt-2 h-2 rounded-full bg-surface-3">
+        <div className="absolute inset-y-0 left-0 rounded-full bg-rose-500/30" style={{ width: `${position}%` }} />
+        <div
+          className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-rose-500 shadow"
+          style={{ left: `${position}%` }}
+          title={`Current price is ${Math.round(position)}% of the way from the 52-week low to the high`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function StockDetail({ stock }) {
+  const price = toNumber(stock.CurrentPrice);
+  const book = toNumber(stock.BookValue);
+  const priceToBook = price && book ? (price / book).toFixed(2) : null;
+
+  return (
+    <>
+      <section className={`${heroStyles} animate-fade-in`}>
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <HeroTitle
+              badges={
+                <>
+                  <Badge tone="rose" className="font-mono">
+                    {stock.Symbol}
+                  </Badge>
+                  {stock.ISIN && <Badge className="font-mono">{stock.ISIN}</Badge>}
+                </>
+              }
+              title={stock.Name}
+              subtitle={stock.ListingDate && `Listed ${stock.ListingDate}`}
+            />
+          </div>
+          <div className="shrink-0 sm:w-56 sm:text-right">
+            <p className="text-xs font-medium text-muted">Current price</p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums text-fg">{stock.CurrentPrice || '—'}</p>
+          </div>
+        </div>
+        <RangeBar stock={stock} />
+      </section>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatTile label="Market cap" value={stock.MarketCap} />
+        <StatTile label="Stock P/E" value={stock.StockPE} />
+        <StatTile label="Book value" value={stock.BookValue} />
+        <StatTile label="Price / book" value={priceToBook} />
+        <StatTile label="ROCE" value={stock.ROCE} tone={signTone(stock.ROCE)} />
+        <StatTile label="ROE" value={stock.ROE} tone={signTone(stock.ROE)} />
+        <StatTile label="Dividend yield" value={stock.DividendYield} />
+        <StatTile label="Face value" value={stock.FaceValue} />
+      </div>
+    </>
+  );
+}
 
 export default function StockDetailPage() {
   const { symbol } = useParams();
-  const [stock, setStock] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchStock = async () => {
-      try {
-        setLoading(true);
-        const { data } = await getStockBySymbol(symbol);
-        setStock(data);
-      } catch (err) {
-        setError('Failed to load stock details');
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (symbol) fetchStock();
-  }, [symbol]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-      </div>
-    );
-  }
-
-  if (error || !stock) {
-    return (
-      <div className="p-6">
-        <Link href="/stocks" className="text-blue-500 hover:underline mb-4 inline-block">← Back to Stocks</Link>
-        <div className="text-red-500">{error || 'Stock not found'}</div>
-      </div>
-    );
-  }
-
-  const InfoCard = ({ label, value, colorClass = 'text-gray-800' }) => (
-    <div className="bg-gray-50 rounded-lg p-3">
-      <span className="text-xs text-gray-500 block">{label}</span>
-      <span className={`font-semibold ${colorClass}`}>{value || 'N/A'}</span>
-    </div>
-  );
+  const resource = useResource(getStockBySymbol, symbol);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <Link href="/stocks" className="text-blue-500 hover:underline mb-6 inline-flex items-center gap-2">
-        <span>←</span> Back to Stocks
-      </Link>
-      
-      <div className="bg-white rounded-2xl shadow-xl p-8 mt-4">
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl font-bold font-mono text-blue-600">{stock.Symbol}</span>
-              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{stock.ISIN}</span>
-            </div>
-            <h1 className="text-xl font-bold text-gray-800">{stock.Name}</h1>
-            <p className="text-gray-500 text-sm">Listed: {stock.ListingDate}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-3xl font-bold text-green-600">{stock.CurrentPrice}</p>
-            <p className="text-sm text-gray-500">Current Price</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <InfoCard label="Market Cap" value={stock.MarketCap} />
-          <InfoCard label="High / Low" value={stock.HighLow} />
-          <InfoCard label="Book Value" value={stock.BookValue} />
-          <InfoCard label="Stock P/E" value={stock.StockPE} />
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <InfoCard 
-            label="ROCE" 
-            value={stock.ROCE} 
-            colorClass={stock.ROCE?.includes('-') ? 'text-red-600' : 'text-green-600'} 
-          />
-          <InfoCard 
-            label="ROE" 
-            value={stock.ROE} 
-            colorClass={stock.ROE?.includes('-') ? 'text-red-600' : 'text-green-600'} 
-          />
-          <InfoCard label="Dividend Yield" value={stock.DividendYield} colorClass="text-blue-600" />
-          <InfoCard label="Face Value" value={stock.FaceValue} />
-        </div>
-
-        <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-6">
-          <h3 className="font-semibold text-gray-700 mb-4">📊 Key Metrics</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500">EPS (TTM):</span>
-              <p className="font-medium">{stock.EPS || 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">Industry P/E:</span>
-              <p className="font-medium">{stock.IndustryPE || 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">PEG Ratio:</span>
-              <p className="font-medium">{stock.PEGRatio || 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">Price to Book:</span>
-              <p className="font-medium">{stock.PriceToBook || 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">Debt to Equity:</span>
-              <p className="font-medium">{stock.DebtToEquity || 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-500">Current Ratio:</span>
-              <p className="font-medium">{stock.CurrentRatio || 'N/A'}</p>
-            </div>
-          </div>
-        </div>
-
-        {stock.Pros && stock.Pros.length > 0 && (
-          <div className="mt-6 bg-green-50 rounded-xl p-4">
-            <h3 className="font-semibold text-green-800 mb-3">✅ Pros</h3>
-            <ul className="space-y-2">
-              {stock.Pros.map((pro, i) => (
-                <li key={i} className="text-sm text-green-700 flex items-start gap-2">
-                  <span>•</span> {pro}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {stock.Cons && stock.Cons.length > 0 && (
-          <div className="mt-4 bg-red-50 rounded-xl p-4">
-            <h3 className="font-semibold text-red-800 mb-3">⚠️ Cons</h3>
-            <ul className="space-y-2">
-              {stock.Cons.map((con, i) => (
-                <li key={i} className="text-sm text-red-700 flex items-start gap-2">
-                  <span>•</span> {con}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
+    <DetailLayout slug="stocks" label="All stocks">
+      <DetailBody resource={resource} noun="stock" skeleton={<StockSkeleton />}>
+        {(stock) => <StockDetail stock={stock} />}
+      </DetailBody>
+    </DetailLayout>
   );
 }

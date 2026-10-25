@@ -1,136 +1,90 @@
 'use client';
 import { getBooks } from "../../src/apis/books";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Table from "../../src/components/Table";
-import Pagination from "../../src/components/Pagination";
+import Collection from "../../src/components/Collection";
+import { HorizontalCard } from "../../src/components/Cards";
+import ShimmerImage from "../../src/components/ShimmerImage";
+import { Badge } from "../../src/components/ui";
+import { httpsUrl } from "../../src/lib/format";
 
-export default function BooksPage() {
-  const [page, setPage] = useState(1);
-  const [books, setBooks] = useState([]);
-  const [nextPage, setNextPage] = useState(true);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const router = useRouter();
-  
-  useEffect(() => {
-    const fetchBooks = async () => {
-      const { data: books, nextPage, totalItems, totalPages } = await getBooks({
-        page,
-        results: 5,
-      });
-      setBooks(books || []);
-      setNextPage(nextPage);
-      setTotalItems(totalItems);
-      setTotalPages(totalPages);
-    }
-    fetchBooks();
-  }, [page]);
+const authorsOf = (info) => {
+  const authors = info?.authors || [];
+  if (authors.length === 0) return 'Unknown author';
+  return authors.length > 2 ? `${authors.slice(0, 2).join(', ')} +${authors.length - 2}` : authors.join(', ');
+};
 
-  const headers = [
-    { label: 'ID', align: 'left' },
-    { label: 'Title', align: 'left' },
-    { label: 'Authors', align: 'left' },
-    { label: 'Publisher', align: 'left' },
-    { label: 'Published', align: 'left' },
-    { label: 'Categories', align: 'left' },
-    { label: 'Cover', align: 'center' }
-  ];
-
-  const renderBookRow = (book) => (
-    <tr key={book.id} onClick={() => router.push(`/books/${book.id}`)} className="border-b border-gray-200 hover:bg-gray-100 cursor-pointer" style={{ height: '45px' }}>
-      <td className="py-2 px-4 text-left whitespace-nowrap">{book.id}</td>
-      <td className="py-2 px-4 text-left">
-        <div className="max-w-md overflow-hidden">
-          <p className="text-sm font-medium">
-            {book.volumeInfo?.title && book.volumeInfo.title.length > 50 
-              ? `${book.volumeInfo.title.substring(0, 50)}...` 
-              : book.volumeInfo?.title || 'N/A'
-            }
-          </p>
+const columns = [
+  {
+    key: 'book',
+    label: 'Book',
+    skeleton: 'media',
+    render: (book) => (
+      <div className="flex items-center gap-3">
+        <ShimmerImage
+          src={httpsUrl(book.volumeInfo?.imageLinks?.thumbnail)}
+          fallbackIcon="book"
+          className="h-10 w-7 shrink-0 rounded border border-line"
+        />
+        <div className="min-w-0">
+          <p className="max-w-72 truncate font-medium text-fg">{book.volumeInfo?.title || 'Untitled'}</p>
           {book.volumeInfo?.subtitle && (
-            <p className="text-xs text-gray-500">
-              {book.volumeInfo.subtitle.length > 40 
-                ? `${book.volumeInfo.subtitle.substring(0, 40)}...` 
-                : book.volumeInfo.subtitle
-              }
-            </p>
+            <p className="max-w-72 truncate text-xs text-subtle">{book.volumeInfo.subtitle}</p>
           )}
         </div>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <p className="text-sm">
-          {book.volumeInfo?.authors 
-            ? book.volumeInfo.authors.slice(0, 2).join(', ') + (book.volumeInfo.authors.length > 2 ? '...' : '')
-            : 'Unknown'
-          }
-        </p>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <p className="text-sm">
-          {book.volumeInfo?.publisher && book.volumeInfo.publisher.length > 20 
-            ? `${book.volumeInfo.publisher.substring(0, 20)}...` 
-            : book.volumeInfo?.publisher || 'N/A'
-          }
-        </p>
-      </td>
-      <td className="py-2 px-4 text-left">
-        <p className="text-sm">
-          {book.volumeInfo?.publishedDate || 'N/A'}
-        </p>
-      </td>
-      <td className="py-2 px-4 text-left">
-        {book.volumeInfo?.categories && book.volumeInfo.categories.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {book.volumeInfo.categories.slice(0, 2).map((category, index) => (
-              <span 
-                key={index}
-                className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded"
-              >
-                {category}
-              </span>
-            ))}
-            {book.volumeInfo.categories.length > 2 && (
-              <span className="text-gray-400 text-xs">+{book.volumeInfo.categories.length - 2}</span>
-            )}
-          </div>
-        ) : (
-          <span className="text-gray-400 text-xs">No categories</span>
-        )}
-      </td>
-      <td className="py-2 px-4 text-center">
-        {book.volumeInfo?.imageLinks?.thumbnail && (
-          <img 
-            src={book.volumeInfo.imageLinks.thumbnail} 
-            alt={book.volumeInfo?.title || 'Book cover'} 
-            className="w-8 h-10 mx-auto border border-gray-300 shadow-sm object-cover"
-          />
-        )}
-      </td>
-    </tr>
-  );
+      </div>
+    ),
+  },
+  {
+    key: 'authors',
+    label: 'Authors',
+    render: (book) => <span className="block max-w-56 truncate text-muted">{authorsOf(book.volumeInfo)}</span>,
+  },
+  {
+    key: 'publisher',
+    label: 'Publisher',
+    render: (book) => <span className="block max-w-48 truncate text-muted">{book.volumeInfo?.publisher || '—'}</span>,
+  },
+  {
+    key: 'year',
+    label: 'Year',
+    render: (book) => <span className="tabular-nums text-muted">{book.volumeInfo?.publishedDate?.slice(0, 4) || '—'}</span>,
+  },
+  {
+    key: 'category',
+    label: 'Category',
+    skeleton: 'badge',
+    render: (book) =>
+      book.volumeInfo?.categories?.[0] ? <Badge tone="violet">{book.volumeInfo.categories[0]}</Badge> : <span className="text-subtle">—</span>,
+  },
+];
 
-  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => p + 1);
-  const handlePageChange = (newPage) => setPage(newPage);
-
+const renderCard = (book) => {
+  const info = book.volumeInfo || {};
   return (
-    <div>
-      <Table
-        title="Books"
-        headers={headers}
-        data={books}
-        renderRow={renderBookRow}
-        totalItems={totalItems}
-      />
-      <Pagination
-        page={page}
-        nextPage={nextPage}
-        totalPages={totalPages}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onPageChange={handlePageChange}
-      />
-    </div>
+    <HorizontalCard
+      image={httpsUrl(info.imageLinks?.thumbnail)}
+      alt={info.title}
+      fallbackIcon="book"
+      title={info.title || 'Untitled'}
+      subtitle={authorsOf(info)}
+      caption={[info.publisher, info.publishedDate?.slice(0, 4)].filter(Boolean).join(' · ') || '—'}
+      meta={info.categories?.slice(0, 2).map((c) => (
+        <Badge key={c} tone="violet">
+          {c}
+        </Badge>
+      ))}
+    />
+  );
+};
+
+export default function BooksPage() {
+  return (
+    <Collection
+      slug="books"
+      fetchPage={getBooks}
+      getKey={(book) => book.id}
+      getHref={(book) => `/books/${book.id}`}
+      renderCard={renderCard}
+      columns={columns}
+    />
   );
 }

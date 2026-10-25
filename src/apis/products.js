@@ -17,3 +17,8 @@ export const getProductById = async (id) => {
     const { data } = await axios.get(`/api/products/${id}`);
     return data;
 };
+
+export const getRandomProduct = async () => {
+    const { data: { data } } = await axios.get('/api/products/random');
+    return data;
+};
